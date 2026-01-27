@@ -1,13 +1,15 @@
 import { useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Package, Wallet, Receipt, LogOut, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Package, Wallet, Receipt, LogOut, Menu, X, Sun, Moon } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../lib/utils';
 import { Button } from '../components/ui/Button';
+import { useTheme } from '../components/ThemeContext';
 
 export default function DashboardLayout() {
   const [isSidebarOpen, setSidebarOpen] = useState(true);
   const navigate = useNavigate();
+  const { theme, setTheme } = useTheme();
 
   const handleLogout = () => {
     // TODO: Clear auth
@@ -62,6 +64,17 @@ export default function DashboardLayout() {
                 <LogOut size={20} />
                 {isSidebarOpen && <span className="ml-2">Logout</span>}
             </Button>
+            
+            <div className="mt-2 pt-2 border-t border-border/50">
+               <Button 
+                 variant="ghost" 
+                 className={cn("w-full justify-start", !isSidebarOpen && "justify-center")} 
+                 onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+               >
+                 {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+                 {isSidebarOpen && <span className="ml-2">Switch Theme</span>}
+               </Button>
+            </div>
         </div>
       </aside>
 
