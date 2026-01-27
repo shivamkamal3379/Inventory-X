@@ -1,10 +1,12 @@
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, Box, Layers, Zap, CheckCircle2 } from 'lucide-react';
+import { ArrowRight, Box, Layers, Zap, CheckCircle2, Sun, Moon } from 'lucide-react';
 import { Button } from '../components/ui/Button';
+import { useTheme } from '../components/ThemeContext';
 
 export default function LandingPage() {
   const navigate = useNavigate();
+  const { theme, setTheme } = useTheme();
 
   return (
     <div className="min-h-screen bg-background relative overflow-hidden text-foreground selection:bg-primary/20">
@@ -25,6 +27,9 @@ export default function LandingPage() {
         </div>
         <div className="hidden md:flex items-center gap-8">
             <a href="#features" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">Features</a>
+            <Button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} variant="ghost" size="icon" className="text-muted-foreground hover:text-primary">
+                {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+            </Button>
             <Button onClick={() => navigate('/login')} variant="outline" className="rounded-full px-6 border-white/10 hover:bg-white/5 hover:text-primary">
                 Login
             </Button>

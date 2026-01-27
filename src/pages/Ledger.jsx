@@ -34,6 +34,32 @@ export default function Ledger() {
     setIsModalOpen(true);
   };
 
+  const getStatusBadge = (status) => {
+      const styles = {
+          'open': 'bg-green-500/10 text-green-500 border-green-500/20',
+          'payment_due': 'bg-red-500/10 text-red-500 border-red-500/20',
+          'closed': 'bg-blue-500/10 text-blue-500 border-blue-500/20',
+          'inactive': 'bg-gray-500/10 text-gray-400 border-gray-500/20',
+          'default': 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' // Provisional/Blocked
+      };
+      
+      const labels = {
+          'open': 'Open',
+          'payment_due': 'Payment Due',
+          'closed': 'Closed',
+          'inactive': 'Inactive',
+          'default': 'Default (Provisional)'
+      };
+
+      const key = status?.toLowerCase() || 'inactive';
+      
+      return (
+        <span className={cn("inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold", styles[key] || styles['inactive'])}>
+            {labels[key] || 'Unknown'}
+        </span>
+      );
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -66,28 +92,26 @@ export default function Ledger() {
                         <th className="h-12 px-4 align-middle font-medium text-muted-foreground">Name</th>
                         <th className="h-12 px-4 align-middle font-medium text-muted-foreground">Contact</th>
                         <th className="h-12 px-4 align-middle font-medium text-muted-foreground">Status</th>
+                        <th className="h-12 px-4 align-middle font-medium text-muted-foreground text-center">Active Items</th>
                         <th className="h-12 px-4 align-middle font-medium text-muted-foreground text-right">Balance</th>
                         <th className="h-12 px-4 align-middle font-medium text-muted-foreground text-right">Actions</th>
                     </tr>
                 </thead>
                 <tbody className="[&_tr:last-child]:border-0">
                     {loading ? (
-                        <tr><td colSpan={5} className="p-4 text-center">Loading...</td></tr>
+                        <tr><td colSpan={6} className="p-4 text-center">Loading...</td></tr>
                     ) : filteredParties.length === 0 ? (
-                        <tr><td colSpan={5} className="p-4 text-center text-muted-foreground">No parties found.</td></tr>
+                        <tr><td colSpan={6} className="p-4 text-center text-muted-foreground">No parties found.</td></tr>
                     ) : (
                         filteredParties.map((party) => (
                             <tr key={party.id} className="border-b transition-colors hover:bg-muted/50">
                                 <td className="p-4 align-middle font-medium">{party.name}</td>
                                 <td className="p-4 align-middle">{party.contact}</td>
                                 <td className="p-4 align-middle">
-                                    <div className={cn("inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2", 
-                                        party.status === 'active' 
-                                            ? "border-transparent bg-primary text-primary-foreground hover:bg-primary/80" 
-                                            : "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80"
-                                    )}>
-                                        {party.status === 'active' ? 'Active' : 'Inactive'}
-                                    </div>
+                                    {getStatusBadge(party.status)}
+                                </td>
+                                <td className="p-4 align-middle text-center">
+                                    {party.activeItems || 0}
                                 </td>
                                 <td className="p-4 align-middle text-right font-mono">
                                     ₹{party.balance.toFixed(2)}
@@ -132,9 +156,12 @@ function LedgerForm({ party, onClose, onSave }) {
     const [formData, setFormData] = useState({
         name: party?.name || '',
         contact: party?.contact || '',
-        email: party?.email || ''
+        email: party?.email || '',
+        status: party?.status || 'inactive'
     });
     const [loading, setLoading] = useState(false);
+
+    const isDefault = formData.status === 'default';
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -142,6 +169,7 @@ function LedgerForm({ party, onClose, onSave }) {
         if (party) {
             await db.parties.update(party.id, formData);
         } else {
+            // New parties default to inactive usually, unless overridden immediately
             await db.parties.add(formData);
         }
         setLoading(false);
@@ -178,6 +206,34 @@ function LedgerForm({ party, onClose, onSave }) {
                             onChange={e => setFormData({...formData, email: e.target.value})}
                         />
                     </div>
+
+                    {party && (
+                        <div className="pt-4 border-t border-border">
+                             <label className="flex items-center gap-2 cursor-pointer">
+                                <input 
+                                    type="checkbox" 
+                                    className="w-4 h-4 rounded border-input"
+                                    checked={isDefault}
+                                    onChange={(e) => {
+                                        if (e.target.checked) {
+                                            setFormData(prev => ({ ...prev, status: 'default' }));
+                                        } else {
+                                            // Revert to inactive (backend will recalculate real status on next transaction or if we persist logic)
+                                            // Ideally we shouldn't guess, but 'inactive' is safe fallback that will get auto-corrected if balance exists on next touch.
+                                            setFormData(prev => ({ ...prev, status: 'inactive' }));
+                                        }
+                                    }}
+                                />
+                                <span className="text-sm font-medium text-yellow-500">
+                                    Set as Default / Provisional (Override Status)
+                                </span>
+                             </label>
+                             <p className="text-xs text-muted-foreground mt-1 ml-6">
+                                Flag this party to avoid dealing with them. Overrides all other statuses.
+                             </p>
+                        </div>
+                    )}
+
                     <div className="flex justify-end gap-2 pt-4">
                         <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
                         <Button type="submit" isLoading={loading}>{party ? 'Update' : 'Add'}</Button>
