@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Search, FileText, Check, Trash2 } from 'lucide-react';
+import { Plus, Search, FileText, Check, Trash2, ArrowRightLeft } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
@@ -10,6 +10,7 @@ export default function Transactions() {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState('rental'); // 'rental' or 'return'
 
   useEffect(() => {
     fetchTransactions();
@@ -29,12 +30,17 @@ export default function Transactions() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-            <h2 className="text-3xl font-bold tracking-tight">Rental Transactions</h2>
-            <p className="text-muted-foreground">Create new rentals and view history.</p>
+            <h2 className="text-3xl font-bold tracking-tight">Transactions</h2>
+            <p className="text-muted-foreground">Create new rentals and process returns.</p>
         </div>
-        <Button onClick={() => setIsModalOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" /> New Transaction
-        </Button>
+        <div className="flex gap-2">
+            <Button onClick={() => { setModalMode('return'); setIsModalOpen(true); }} variant="secondary">
+                <ArrowRightLeft className="mr-2 h-4 w-4" /> Return Items
+            </Button>
+            <Button onClick={() => { setModalMode('rental'); setIsModalOpen(true); }}>
+                <Plus className="mr-2 h-4 w-4" /> New Rental
+            </Button>
+        </div>
       </div>
 
       <div className="rounded-md border border-border bg-card p-12 text-center text-muted-foreground">
@@ -55,6 +61,7 @@ export default function Transactions() {
                     className="w-full max-w-4xl my-8"
                 >
                     <TransactionForm 
+                        mode={modalMode}
                         onClose={() => setIsModalOpen(false)} 
                         onSave={() => { setIsModalOpen(false); fetchTransactions(); }} 
                     />
@@ -66,7 +73,7 @@ export default function Transactions() {
   );
 }
 
-function TransactionForm({ onClose, onSave }) {
+function TransactionForm({ mode, onClose, onSave }) {
     const [step, setStep] = useState(1);
     const [parties, setParties] = useState([]);
     const [items, setItems] = useState([]);
@@ -106,7 +113,11 @@ function TransactionForm({ onClose, onSave }) {
                 if (field === 'itemId') {
                     const dbItem = items.find(i => i.id === value);
                     if (dbItem) {
-                        updates.price = dbItem.price;
+                        // For rentals, use price. For returns, usually price is 0 unless restocking fee?
+                        // Let's keep price logic for now so "Total Value" is tracked, but for Returns maybe we don't charge?
+                        // Or maybe we treat "Total" as "Refund Amount"?
+                        // Use Case: Simple Return -> Just restocking.
+                        updates.price = mode === 'rental' ? dbItem.price : 0; 
                         updates.name = dbItem.name;
                     }
                 }
@@ -124,7 +135,7 @@ function TransactionForm({ onClose, onSave }) {
             items: lineItems.filter(i => i.itemId), // save items
             totalAmount: grandTotal,
             paidAmount: Number(paidAmount),
-            type: 'RENTAL'
+            type: mode === 'rental' ? 'RENTAL' : 'RETURN'
         };
         
         await db.transactions.add(transaction);
@@ -138,7 +149,7 @@ function TransactionForm({ onClose, onSave }) {
             <Card className="bg-white text-black">
                 <CardHeader className="border-b">
                     <CardTitle className="flex justify-between items-center text-black">
-                        <span>Invoice Generated</span>
+                        <span>{mode === 'rental' ? 'Invoice Generated' : 'Return Processed'}</span>
                         <Check className="h-6 w-6 text-green-500" />
                     </CardTitle>
                 </CardHeader>
@@ -152,23 +163,33 @@ function TransactionForm({ onClose, onSave }) {
                              item.itemId && (
                                 <div key={idx} className="flex justify-between text-sm">
                                     <span>{item.name} (x{item.qty})</span>
-                                    <span>₹{(item.price * item.qty).toFixed(2)}</span>
+                                    <span>{mode === 'rental' ? `₹${(item.price * item.qty).toFixed(2)}` : '-'}</span>
                                 </div>
                              )
                          ))}
                     </div>
-                    <div className="flex justify-between font-bold text-lg">
-                        <span>Total</span>
-                        <span>₹{grandTotal.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between text-muted-foreground text-sm">
-                        <span>Paid</span>
-                        <span>₹{parseFloat(paidAmount).toFixed(2)}</span>
-                    </div>
-                     <div className="flex justify-between font-bold text-primary">
-                        <span>Balance Due</span>
-                        <span>₹{(grandTotal - paidAmount).toFixed(2)}</span>
-                    </div>
+                    {mode === 'rental' && (
+                        <>
+                            <div className="flex justify-between font-bold text-lg">
+                                <span>Total</span>
+                                <span>₹{grandTotal.toFixed(2)}</span>
+                            </div>
+                            <div className="flex justify-between text-muted-foreground text-sm">
+                                <span>Paid</span>
+                                <span>₹{parseFloat(paidAmount).toFixed(2)}</span>
+                            </div>
+                             <div className="flex justify-between font-bold text-primary">
+                                <span>Balance Due</span>
+                                <span>₹{(grandTotal - paidAmount).toFixed(2)}</span>
+                            </div>
+                        </>
+                    )}
+                    {mode === 'return' && (
+                         <div className="flex justify-between font-bold text-lg">
+                            <span>Balance Adjustment</span>
+                            <span>-{parseFloat(paidAmount).toFixed(2)} (Paid)</span>
+                        </div>
+                    )}
 
                     <div className="flex justify-end pt-4 no-print">
                         <Button onClick={onSave}>Close</Button>
@@ -181,7 +202,7 @@ function TransactionForm({ onClose, onSave }) {
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Create New Rental</CardTitle>
+                <CardTitle>{mode === 'rental' ? 'Create New Rental' : 'Return Items'}</CardTitle>
             </CardHeader>
             <CardContent>
                 <div className="space-y-6">
@@ -195,7 +216,9 @@ function TransactionForm({ onClose, onSave }) {
                         >
                             <option value="" className="text-black">-- Select a Party --</option>
                             {parties.map(p => (
-                                <option key={p.id} value={p.id} className="text-black">{p.name}</option>
+                                <option key={p.id} value={p.id} className="text-black">
+                                    {p.name} {p.activeItems > 0 ? `(Has ${p.activeItems} items)` : ''}
+                                </option>
                             ))}
                         </select>
                     </div>
@@ -212,8 +235,8 @@ function TransactionForm({ onClose, onSave }) {
                                 >
                                     <option value="" className="text-black">Select Item</option>
                                     {items.map(i => (
-                                        <option key={i.id} value={i.id} className="text-black" disabled={i.quantity <= 0}>
-                                            {i.name} (Qty: {i.quantity})
+                                        <option key={i.id} value={i.id} className="text-black" disabled={mode === 'rental' && i.quantity <= 0}>
+                                            {i.name} {mode === 'rental' ? `(Avail: ${i.quantity})` : ''}
                                         </option>
                                     ))}
                                 </select>
@@ -225,9 +248,11 @@ function TransactionForm({ onClose, onSave }) {
                                     value={item.qty}
                                     onChange={(e) => updateLineItem(item.id, 'qty', parseInt(e.target.value))}
                                 />
-                                <div className="h-10 flex items-center px-3 border border-input rounded-md min-w-[80px] justify-end bg-muted/50">
-                                    ₹{(item.price * item.qty).toFixed(2)}
-                                </div>
+                                {mode === 'rental' && (
+                                    <div className="h-10 flex items-center px-3 border border-input rounded-md min-w-[80px] justify-end bg-muted/50">
+                                        ₹{(item.price * item.qty).toFixed(2)}
+                                    </div>
+                                )}
                                 <Button variant="ghost" size="icon" className="text-destructive h-10 w-10" onClick={() => handleRemoveItem(item.id)}>
                                     <Trash2 className="h-4 w-4" />
                                 </Button>
@@ -241,17 +266,19 @@ function TransactionForm({ onClose, onSave }) {
                     {/* Payment */}
                     <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border">
                         <div className="space-y-2">
-                             <label className="text-sm font-medium">Payment Received</label>
+                             <label className="text-sm font-medium">{mode === 'rental' ? 'Payment Received' : 'Settlement Amount (e.g. Refund/Payoff)'}</label>
                              <Input 
                                 type="number" 
                                 value={paidAmount} 
                                 onChange={(e) => setPaidAmount(e.target.value)}
                              />
                         </div>
-                        <div className="text-right space-y-1">
-                            <div className="text-sm text-muted-foreground">Grand Total</div>
-                            <div className="text-2xl font-bold">₹{grandTotal.toFixed(2)}</div>
-                        </div>
+                        {mode === 'rental' && (
+                            <div className="text-right space-y-1">
+                                <div className="text-sm text-muted-foreground">Grand Total</div>
+                                <div className="text-2xl font-bold">₹{grandTotal.toFixed(2)}</div>
+                            </div>
+                        )}
                     </div>
 
                     <div className="flex justify-end gap-2 pt-4">
@@ -261,7 +288,7 @@ function TransactionForm({ onClose, onSave }) {
                             isLoading={loading}
                             disabled={!selectedParty || lineItems.every(i => !i.itemId)}
                         >
-                            Generate Bill
+                            {mode === 'rental' ? 'Generate Bill' : 'Process Return'}
                         </Button>
                     </div>
                 </div>

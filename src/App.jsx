@@ -8,11 +8,13 @@ import Inventory from './pages/Inventory';
 import Ledger from './pages/Ledger';
 import Transactions from './pages/Transactions';
 import ProtectedRoute from './components/ProtectedRoute';
+import { ThemeProvider } from './components/ThemeContext';
 
 function App() {
   return (
-    <BrowserRouter>
-      <Routes>
+    <ThemeProvider>
+      <BrowserRouter>
+        <Routes>
         {/* Public Routes */}
         <Route path="/" element={<LandingPage />} />
         
@@ -34,7 +36,8 @@ function App() {
         {/* Catch all */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-    </BrowserRouter>
+      </BrowserRouter>
+    </ThemeProvider>
   )
 }
 
