@@ -47,7 +47,7 @@ export default function LoginPage() {
                 <Input 
                     type="text" 
                     placeholder="Username" 
-                    className="pl-10 bg-white/5 border-white/10"
+                    className="pl-10 bg-muted/50 border-border"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     required
@@ -60,7 +60,7 @@ export default function LoginPage() {
                 <Input 
                     type="password" 
                     placeholder="Password" 
-                    className="pl-10 bg-white/5 border-white/10"
+                    className="pl-10 bg-muted/50 border-border"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
