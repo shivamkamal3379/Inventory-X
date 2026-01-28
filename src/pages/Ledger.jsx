@@ -64,7 +64,7 @@ export default function Ledger() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-            <h2 className="text-3xl font-bold tracking-tight">Ledger</h2>
+            <h2 className="text-3xl font-bold tracking-tight">Parties</h2>
             <p className="text-muted-foreground">Monitor party balances and rental status.</p>
         </div>
         <Button onClick={() => openModal()}>

@@ -4,7 +4,7 @@ export const authService = {
     await new Promise(resolve => setTimeout(resolve, 800));
 
     if (username === 'admin' && password === 'password') {
-      const token = 'mock-jwt-token-12345';
+      const token = 'mock-jwt-token-12345'; 
       localStorage.setItem('token', token);
       return { success: true, token };
     }

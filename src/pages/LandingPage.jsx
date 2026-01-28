@@ -21,16 +21,16 @@ export default function LandingPage() {
       <nav className="relative z-10 flex items-center justify-between px-6 py-6 max-w-7xl mx-auto">
         <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-gradient-to-tr from-primary to-blue-500 rounded-lg flex items-center justify-center shadow-lg shadow-primary/20">
-                <Box className="text-black w-5 h-5" />
+                <Box className="text-white w-5 h-5" />
             </div>
-            <span className="font-bold text-xl tracking-tight">InventoryX</span>
+            <span className="font-bold text-xl tracking-tight text-foreground">InventoryX</span>
         </div>
         <div className="hidden md:flex items-center gap-8">
             <a href="#features" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">Features</a>
             <Button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} variant="ghost" size="icon" className="text-muted-foreground hover:text-primary">
                 {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
             </Button>
-            <Button onClick={() => navigate('/login')} variant="outline" className="rounded-full px-6 border-white/10 hover:bg-white/5 hover:text-primary">
+            <Button onClick={() => navigate('/login')} variant="outline" className="rounded-full px-6 border-border hover:bg-accent hover:text-primary">
                 Login
             </Button>
         </div>
@@ -46,7 +46,7 @@ export default function LandingPage() {
              <span className="inline-block py-1 px-3 rounded-full bg-primary/10 text-primary text-xs font-semibold tracking-wide mb-6 border border-primary/20">
                 PRO VERSION 2.0
              </span>
-             <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight mb-6 bg-gradient-to-b from-white to-white/60 bg-clip-text text-transparent">
+             <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight mb-6 text-foreground">
                 Master Your <br />
                 <span className="bg-gradient-to-r from-primary to-blue-400 bg-clip-text text-transparent">Inventory & Rentals</span>
              </h1>
@@ -69,15 +69,15 @@ export default function LandingPage() {
             transition={{ duration: 0.8 }}
             viewport={{ once: true }}
          >
-            <div className="relative rounded-xl border border-white/10 bg-card/50 backdrop-blur-xl shadow-2xl overflow-hidden">
+            <div className="relative rounded-xl border border-border bg-card/50 backdrop-blur-xl shadow-2xl overflow-hidden">
                 {/* Window Header */}
-                <div className="h-10 border-b border-white/10 bg-black/20 flex items-center px-4 gap-2">
+                <div className="h-10 border-b border-border bg-muted/20 flex items-center px-4 gap-2">
                     <div className="flex gap-1.5">
                         <div className="w-3 h-3 rounded-full bg-red-500/80" />
                         <div className="w-3 h-3 rounded-full bg-yellow-500/80" />
                         <div className="w-3 h-3 rounded-full bg-green-500/80" />
                     </div>
-                    <div className="ml-4 px-3 py-1 bg-white/5 rounded-md text-[10px] text-muted-foreground font-mono">
+                    <div className="ml-4 px-3 py-1 bg-muted rounded-md text-[10px] text-muted-foreground font-mono">
                         dashboard/inventory
                     </div>
                 </div>
@@ -102,9 +102,9 @@ export default function LandingPage() {
 
                     {/* Main Table Area */}
                     <div className="md:col-span-3 space-y-4">
-                        <div className="flex items-center justify-between pb-4 border-b border-white/5">
-                            <h3 className="font-semibold text-lg">Live Inventory Status</h3>
-                            <button className="text-xs bg-primary text-black px-3 py-1.5 rounded-md font-medium">
+                        <div className="flex items-center justify-between pb-4 border-b border-border">
+                            <h3 className="font-semibold text-lg text-foreground">Live Inventory Status</h3>
+                            <button className="text-xs bg-primary text-primary-foreground px-3 py-1.5 rounded-md font-medium">
                                 + Add Item
                             </button>
                         </div>
@@ -116,22 +116,22 @@ export default function LandingPage() {
                                 { name: 'ErgoChair Pro', cat: 'Furniture', stock: 45, status: 'Available' },
                                 { name: 'MacBook Pro M3', cat: 'Laptops', stock: 0, status: 'Out of Stock' },
                             ].map((item, i) => (
-                                <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-colors border border-white/5">
+                                <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors border border-border">
                                     <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 rounded bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center text-xs font-bold text-gray-400">
+                                        <div className="w-8 h-8 rounded bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center text-xs font-bold text-white">
                                             {item.name[0]}
                                         </div>
                                         <div>
-                                            <div className="text-sm font-medium">{item.name}</div>
+                                            <div className="text-sm font-medium text-foreground">{item.name}</div>
                                             <div className="text-xs text-muted-foreground">{item.cat}</div>
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-4 text-sm">
                                         <span className="font-mono text-muted-foreground">{item.stock}</span>
                                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium border ${
-                                            item.status === 'Available' ? 'bg-green-500/10 text-green-400 border-green-500/20' :
-                                            item.status === 'Low Stock' ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' :
-                                            'bg-red-500/10 text-red-400 border-red-500/20'
+                                            item.status === 'Available' ? 'bg-green-500/10 text-green-500 border-green-500/20' :
+                                            item.status === 'Low Stock' ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' :
+                                            'bg-red-500/10 text-red-500 border-red-500/20'
                                         }`}>
                                             {item.status}
                                         </span>
@@ -154,19 +154,19 @@ export default function LandingPage() {
          </motion.div>
 
          <div className="mt-24 grid grid-cols-1 md:grid-cols-3 gap-8 w-full">
-            <div className="p-6 rounded-2xl bg-card border border-white/5 hover:border-primary/50 transition-colors group">
+            <div className="p-6 rounded-2xl bg-card border border-border hover:border-primary/50 transition-colors group">
                 <Box className="w-10 h-10 text-primary mb-4 group-hover:scale-110 transition-transform" />
-                <h3 className="text-xl font-bold mb-2">Smart Inventory</h3>
+                <h3 className="text-xl font-bold mb-2 text-foreground">Smart Inventory</h3>
                 <p className="text-muted-foreground">Track every item in real-time. Automated alerts for low stock levels.</p>
             </div>
-            <div className="p-6 rounded-2xl bg-card border border-white/5 hover:border-blue-500/50 transition-colors group">
+            <div className="p-6 rounded-2xl bg-card border border-border hover:border-blue-500/50 transition-colors group">
                 <Layers className="w-10 h-10 text-blue-400 mb-4 group-hover:scale-110 transition-transform" />
-                <h3 className="text-xl font-bold mb-2">Party Ledger</h3>
+                <h3 className="text-xl font-bold mb-2 text-foreground">Party Ledger</h3>
                 <p className="text-muted-foreground">Manage client relationships, track balances, and active rentals.</p>
             </div>
-            <div className="p-6 rounded-2xl bg-card border border-white/5 hover:border-purple-500/50 transition-colors group">
+            <div className="p-6 rounded-2xl bg-card border border-border hover:border-purple-500/50 transition-colors group">
                 <Zap className="w-10 h-10 text-purple-400 mb-4 group-hover:scale-110 transition-transform" />
-                <h3 className="text-xl font-bold mb-2">Instant Billing</h3>
+                <h3 className="text-xl font-bold mb-2 text-foreground">Instant Billing</h3>
                 <p className="text-muted-foreground">Generate professional invoices in seconds. Support for ₹ INR Currency.</p>
             </div>
          </div>

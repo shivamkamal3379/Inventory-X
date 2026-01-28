@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Package, Wallet, Receipt, LogOut, Menu, X, Sun, Moon } from 'lucide-react';
+import { LayoutDashboard, Package, Wallet, Receipt, LogOut, Menu, X, Sun, Moon, PersonStanding } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../lib/utils';
 import { Button } from '../components/ui/Button';
@@ -12,14 +12,14 @@ export default function DashboardLayout() {
   const { theme, setTheme } = useTheme();
 
   const handleLogout = () => {
-    // TODO: Clear auth
+    // TODO: Clear auth 
     navigate('/');
   };
 
   const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
     { icon: Package, label: 'Inventory', path: '/dashboard/inventory' },
-    { icon: Wallet, label: 'Ledger', path: '/dashboard/ledger' },
+    { icon: PersonStanding, label: 'Party', path: '/dashboard/party' },
     { icon: Receipt, label: 'Transactions', path: '/dashboard/transactions' },
   ];
 

@@ -10,7 +10,7 @@ export function ThemeProvider({ children }) {
     // Check local storage or default to dark
     if (typeof window !== 'undefined') {
       const savedTheme = localStorage.getItem('theme');
-      return savedTheme || 'dark';
+      return savedTheme || 'dark'; 
     }
     return 'dark';
   });

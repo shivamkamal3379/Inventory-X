@@ -28,7 +28,7 @@ function App() {
           <Route path="/dashboard" element={<DashboardLayout />}>
             <Route index element={<DashboardHome />} />
             <Route path="inventory" element={<Inventory />} />
-            <Route path="ledger" element={<Ledger />} />
+            <Route path="party" element={<Ledger />} />
             <Route path="transactions" element={<Transactions />} />
           </Route>
         </Route>
