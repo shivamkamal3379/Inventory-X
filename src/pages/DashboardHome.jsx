@@ -34,10 +34,10 @@ export default function DashboardHome() {
         animate="show"
         className="grid gap-4 md:grid-cols-3"
       >
-        <motion.div variants={item} className="cursor-pointer" onClick={() => navigate('/dashboard/ledger')}>
+        <motion.div variants={item} className="cursor-pointer" onClick={() => navigate('/dashboard/party')}>
             <Card className="hover:bg-accent/50 transition-colors border-primary/20 bg-primary/5">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Add to Ledger</CardTitle>
+                    <CardTitle className="text-sm font-medium">Add Party</CardTitle>
                     <UserPlus className="h-4 w-4 text-primary" />
                 </CardHeader>
                 <CardContent>
@@ -47,7 +47,7 @@ export default function DashboardHome() {
             </Card>
         </motion.div>
 
-        <motion.div variants={item} className="cursor-pointer" onClick={() => navigate('/dashboard/ledger')}>
+        <motion.div variants={item} className="cursor-pointer" onClick={() => navigate('/dashboard/party')}>
             <Card className="hover:bg-accent/50 transition-colors">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Manage Parties</CardTitle>
