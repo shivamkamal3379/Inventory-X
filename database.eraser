@@ -1,0 +1,55 @@
+// RentalPro (Inventory-X) ER Diagram in Eraser DSL
+
+parties [icon: users, color: blue] {
+  id string pk
+  name string
+  contact string
+  email string
+  current_balance decimal
+  status enum
+  created_at timestamp
+}
+
+inventory [icon: package, color: orange] {
+  id string pk
+  name string
+  total_quantity int
+  available_quantity int
+  rental_price decimal
+  created_at timestamp
+}
+
+transactions [icon: file-text, color: green] {
+  id string pk
+  party_id string fk
+  type enum
+  total_amount decimal
+  paid_amount decimal
+  date timestamp
+  notes string
+}
+
+transaction_items [icon: list, color: green] {
+  id string pk
+  transaction_id string fk
+  inventory_item_id string fk
+  quantity int
+  price_at_moment decimal
+}
+
+ledger_entries [icon: book, color: purple] {
+  id string pk
+  party_id string fk
+  transaction_id string fk
+  type enum
+  amount decimal
+  description string
+  date timestamp
+}
+
+// Relationships
+parties.id < transactions.party_id
+parties.id < ledger_entries.party_id
+transactions.id < transaction_items.transaction_id
+inventory.id < transaction_items.inventory_item_id
+transactions.id < ledger_entries.transaction_id

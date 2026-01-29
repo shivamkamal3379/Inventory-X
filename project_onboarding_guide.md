@@ -12,7 +12,7 @@ Imagine a restaurant:
 2.  **The Waiter (Frontend)**: Takes the order and brings it to the kitchen.
 3.  **The Kitchen (Backend/API)**: Cooks the food (processes data) and checks the pantry (Database).
 
-In **RentalPro**:
+In **InventoryX**:
 
 - **Frontend (The Waiter)**: What you see on the screen. It doesn't "know" anything permanently; it just displays what it's told and asks for things.
 - **Backend (The Kitchen)**: In our theoretical model, this is the API that saves data, calculates bills, and ensures we don't rent out an item we don't have.

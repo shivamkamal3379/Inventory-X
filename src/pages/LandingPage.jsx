@@ -1,4 +1,5 @@
-import { motion } from 'framer-motion';
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, Box, Layers, Zap, CheckCircle2, Sun, Moon } from 'lucide-react';
 import { Button } from '../components/ui/Button';
@@ -7,6 +8,35 @@ import { useTheme } from '../components/ThemeContext';
 export default function LandingPage() {
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 100);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const NavbarContent = ({ isSticky = false }) => (
+    <>
+        <div className="flex items-center gap-2">
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center shadow-lg ${isSticky ? 'bg-primary text-primary-foreground' : 'bg-gradient-to-tr from-primary to-blue-500 text-white shadow-primary/20'}`}>
+                <Box className="w-5 h-5" />
+            </div>
+            <span className="font-bold text-xl tracking-tight text-foreground">InventoryX</span>
+        </div>
+        <div className="hidden md:flex items-center gap-8">
+            <a href="#features" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">Features</a>
+            <Button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} variant="ghost" size="icon" className="text-muted-foreground hover:text-primary">
+                {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+            </Button>
+            <Button onClick={() => navigate('/login')} variant={isSticky ? "default" : "outline"} className={`rounded-full px-6 ${isSticky ? 'shadow-md shadow-primary/20' : 'border-border hover:bg-accent hover:text-primary'}`}>
+                Login
+            </Button>
+        </div>
+    </>
+  );
 
   return (
     <div className="min-h-screen bg-background relative overflow-hidden text-foreground selection:bg-primary/20">
@@ -17,27 +47,30 @@ export default function LandingPage() {
          <div className="absolute bottom-[0%] left-[20%] w-[30%] h-[30%] rounded-full bg-cyan-600/5 blur-[120px]" />
       </div>
 
-      {/* Navbar */}
-      <nav className="relative z-10 flex items-center justify-between px-6 py-6 max-w-7xl mx-auto">
-        <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-to-tr from-primary to-blue-500 rounded-lg flex items-center justify-center shadow-lg shadow-primary/20">
-                <Box className="text-white w-5 h-5" />
-            </div>
-            <span className="font-bold text-xl tracking-tight text-foreground">InventoryX</span>
-        </div>
-        <div className="hidden md:flex items-center gap-8">
-            <a href="#features" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">Features</a>
-            <Button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} variant="ghost" size="icon" className="text-muted-foreground hover:text-primary">
-                {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
-            </Button>
-            <Button onClick={() => navigate('/login')} variant="outline" className="rounded-full px-6 border-border hover:bg-accent hover:text-primary">
-                Login
-            </Button>
-        </div>
+      {/* Original Navbar (Static) */}
+      <nav className={`relative z-10 flex items-center justify-between px-6 py-6 max-w-7xl mx-auto transition-opacity duration-300 ${isScrolled ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+        <NavbarContent />
       </nav>
 
+      {/* Sticky Glassy Navbar (Bangs Down) */}
+      <AnimatePresence>
+        {isScrolled && (
+            <motion.nav 
+                initial={{ y: -100, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: -100, opacity: 0 }}
+                transition={{ duration: 0.4, ease: "easeOut" }}
+                className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-4 bg-background/80 backdrop-blur-md border-b border-border/50 shadow-sm"
+            >
+                <div className="w-full max-w-7xl mx-auto flex items-center justify-between">
+                    <NavbarContent isSticky={true} />
+                </div>
+            </motion.nav>
+        )}
+      </AnimatePresence>
+
       {/* Hero Section */}
-      <main className="relative z-10 max-w-7xl mx-auto px-6 pt-20 pb-10 flex flex-col items-center text-center">
+      <main className="relative z-10 max-w-7xl mx-auto px-6 pt-10 pb-10 flex flex-col items-center text-center">
          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
