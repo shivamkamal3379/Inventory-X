@@ -2,7 +2,13 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
 from src.core.database import get_db
-from src.schemas.inventory import ItemCreate, ItemOut, AvailableStockOut, RentalPriceOut
+from src.schemas.inventory import (
+    ItemCreate,
+    ItemOut,
+    AvailableStockOut,
+    RentalPriceOut,
+    ItemUpdate,
+)
 from src.services.inventory import item_service, stock_service, price_service
 
 router = APIRouter(prefix="/items", tags=["items"])
@@ -23,6 +29,24 @@ def read_item(item_id: int, db: Session = Depends(get_db)):
     item = item_service.get(db, id=item_id)
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
+    return item
+
+
+@router.put("/{item_id}", response_model=ItemOut)
+def update_item(item_id: int, item_in: ItemUpdate, db: Session = Depends(get_db)):
+    item = item_service.get(db, id=item_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+    item = item_service.update(db, db_obj=item, obj_in=item_in)
+    return item
+
+
+@router.delete("/{item_id}", response_model=ItemOut)
+def delete_item(item_id: int, db: Session = Depends(get_db)):
+    item = item_service.get(db, id=item_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+    item = item_service.remove(db, id=item_id)
     return item
 
 
