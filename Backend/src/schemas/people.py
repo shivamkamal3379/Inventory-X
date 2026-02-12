@@ -15,6 +15,12 @@ class AgentCreate(AgentBase):
     pass
 
 
+class AgentUpdate(AgentBase):
+    AgentName: Optional[str] = None
+    mobile: Optional[str] = None
+    pass
+
+
 class AgentOut(AgentBase):
     agentId: int
 
@@ -37,6 +43,13 @@ class PartyBase(BaseModel):
 
 class PartyCreate(PartyBase):
     id: str
+    pass
+
+
+class PartyUpdate(PartyBase):
+    name: Optional[str] = None
+    mobile: Optional[str] = None
+    id: Optional[str] = None
     pass
 
 

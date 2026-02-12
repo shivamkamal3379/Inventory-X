@@ -1,17 +1,15 @@
 # Backend API Requirements & Structure
 
-This document outlines the required API endpoints, data models, and user operations derived from the current frontend implementation.
+This document outlines the implemented API endpoints, data models, and operations.
 
 ## 1. Authentication Module
 
 ### Page: Login Page (`/login`)
 
-User authenticates to access the dashboard.
-
-| Operation        | Method | Endpoint          | Payload                         | Description                                         |
-| :--------------- | :----- | :---------------- | :------------------------------ | :-------------------------------------------------- |
-| **Login**        | `POST` | `/api/auth/login` | `{ username, password }`        | Authenticates user and returns JWT token.           |
-| **Verify Token** | `GET`  | `/api/auth/me`    | `Authorization: Bearer <token>` | Verifies if current session is valid (on app load). |
+| Operation        | Method | Endpoint      | Payload                         | Description                               |
+| :--------------- | :----- | :------------ | :------------------------------ | :---------------------------------------- |
+| **Login**        | `POST` | `/auth/login` | `{ username, password }`        | Authenticates user and returns JWT token. |
+| **Verify Token** | `GET`  | `/auth/me`    | `Authorization: Bearer <token>` | Verifies session validity.                |
 
 ---
 
@@ -19,114 +17,92 @@ User authenticates to access the dashboard.
 
 ### Page: Dashboard Home (`/dashboard`)
 
-Overview of activities and quick actions.
-
-| Operation               | Method | Endpoint                  | Description                                       |
-| :---------------------- | :----- | :------------------------ | :------------------------------------------------ |
-| **Get Stats**           | `GET`  | `/api/dashboard/stats`    | Returns total sales, recent activity count, etc.  |
-| **Get Recent Activity** | `GET`  | `/api/dashboard/activity` | Returns list of recent transactions (limit 5-10). |
+| Operation               | Method | Endpoint              | Description                                      |
+| :---------------------- | :----- | :-------------------- | :----------------------------------------------- |
+| **Get Stats**           | `GET`  | `/dashboard/stats`    | Returns total sales, recent activity count, etc. |
+| **Get Recent Activity** | `GET`  | `/dashboard/activity` | Returns list of recent transactions.             |
 
 ---
 
-## 3. Inventory Module
+## 3. Agents Module
+
+### Page: Agents Management
+
+Manage agents who facilitate rentals.
+
+| Operation        | Method   | Endpoint       | Payload                      | Description                 |
+| :--------------- | :------- | :------------- | :--------------------------- | :-------------------------- |
+| **List Agents**  | `GET`    | `/agents`      | -                            | Get all agents.             |
+| **Create Agent** | `POST`   | `/agents`      | `{ AgentName, mobile, ... }` | Create a new agent.         |
+| **Get Agent**    | `GET`    | `/agents/{id}` | -                            | Get specific agent details. |
+| **Update Agent** | `PUT`    | `/agents/{id}` | `{ AgentName, mobile, ... }` | Update agent details.       |
+| **Delete Agent** | `DELETE` | `/agents/{id}` | -                            | Remove an agent.            |
+
+---
+
+## 4. Inventory Module (Items)
 
 ### Page: Inventory (`/dashboard/inventory`)
 
-Manage stock items (Printers, Chairs, etc.).
+Manage stock items.
 
-| Operation       | Method   | Endpoint             | Payload                                  | Description                              |
-| :-------------- | :------- | :------------------- | :--------------------------------------- | :--------------------------------------- |
-| **List Items**  | `GET`    | `/api/inventory`     | `?search=<term>`                         | Get all items. Support search filtering. |
-| **Add Item**    | `POST`   | `/api/inventory`     | `{ name, description, quantity, price }` | Create a new stock item.                 |
-| **Update Item** | `PUT`    | `/api/inventory/:id` | `{ name, description, quantity, price }` | Update item details.                     |
-| **Delete Item** | `DELETE` | `/api/inventory/:id` | -                                        | Remove an item from stock.               |
-
-**Data Model (Item):**
-
-```json
-{
-  "id": "uuid",
-  "name": "string",
-  "description": "string",
-  "quantity": "integer (current stock)",
-  "totalQuantity": "integer (total owned)",
-  "price": "number (rental price per unit)"
-}
-```
+| Operation          | Method   | Endpoint            | Payload              | Description                   |
+| :----------------- | :------- | :------------------ | :------------------- | :---------------------------- |
+| **List Items**     | `GET`    | `/items`            | `?skip=0&limit=100`  | Get all items.                |
+| **Create Item**    | `POST`   | `/items`            | `{ name, qty, ... }` | Create a new stock item.      |
+| **Get Item**       | `GET`    | `/items/{id}`       | -                    | Get item details.             |
+| **Update Item**    | `PUT`    | `/items/{id}`       | `{ name, qty, ... }` | Update item details.          |
+| **Delete Item**    | `DELETE` | `/items/{id}`       | -                    | Remove an item.               |
+| **Get Item Stock** | `GET`    | `/items/{id}/stock` | -                    | Get available stock for item. |
 
 ---
 
-## 4. Ledger (Party Management) Module
+## 5. Ledger Module (Parties)
 
 ### Page: Ledger (`/dashboard/ledger`)
 
-Manage clients/parties and track their balances.
+Manage parties/clients.
 
-| Operation             | Method | Endpoint           | Payload                            | Description                                        |
-| :-------------------- | :----- | :----------------- | :--------------------------------- | :------------------------------------------------- |
-| **List Parties**      | `GET`  | `/api/parties`     | `?search=<term>`                   | Get all parties with current balance and status.   |
-| **Add Party**         | `POST` | `/api/parties`     | `{ name, contact, email, status }` | Register a new client.                             |
-| **Update Party**      | `PUT`  | `/api/parties/:id` | `{ name, contact, email, status }` | Update client details or manual status override.   |
-| **Get Party Details** | `GET`  | `/api/parties/:id` | -                                  | Get full history and details for a specific party. |
-
-**Data Model (Party):**
-
-```json
-{
-  "id": "uuid",
-  "name": "string",
-  "contact": "string",
-  "email": "string",
-  "balance": "number (positive = they owe us)",
-  "activeItems": "integer (items currently with them)",
-  "status": "enum('active', 'inactive', 'payment_due', 'default')",
-  "createdAt": "timestamp"
-}
-```
+| Operation        | Method   | Endpoint        | Payload                 | Description           |
+| :--------------- | :------- | :-------------- | :---------------------- | :-------------------- |
+| **List Parties** | `GET`    | `/parties`      | `?skip=0&limit=100`     | Get all parties.      |
+| **Create Party** | `POST`   | `/parties`      | `{ name, mobile, ... }` | Register a new party. |
+| **Get Party**    | `GET`    | `/parties/{id}` | -                       | Get party details.    |
+| **Update Party** | `PUT`    | `/parties/{id}` | `{ name, mobile, ... }` | Update party details. |
+| **Delete Party** | `DELETE` | `/parties/{id}` | -                       | Remove a party.       |
 
 ---
 
-## 5. Transaction (Billing) Module
+## 6. Rent & Returns Module
 
 ### Page: Transactions (`/dashboard/transactions`)
 
-Process Rentals and Returns. This is the core logic engine.
+Process Rentals and Returns.
 
-| Operation              | Method | Endpoint            | Payload                                                 | Description                            |
-| :--------------------- | :----- | :------------------ | :------------------------------------------------------ | :------------------------------------- |
-| **Create Transaction** | `POST` | `/api/transactions` | `{ partyId, items: [{itemId, qty}], type, paidAmount }` | Create a Rental or Return transaction. |
-| **List Transactions**  | `GET`  | `/api/transactions` | `?partyId=<id>`                                         | Get transaction history.               |
+| Operation             | Method | Endpoint   | Payload                             | Description                         |
+| :-------------------- | :----- | :--------- | :---------------------------------- | :---------------------------------- |
+| **Rent Out (Create)** | `POST` | `/rent`    | `{ partyId, itemId, itemQty, ... }` | Rent out an item (Decreases Stock). |
+| **List Rents**        | `GET`  | `/rent`    | `?skip=0&limit=100`                 | List rental history.                |
+| **Return (Create)**   | `POST` | `/returns` | `{ partyId, itemId, itemQty, ... }` | Return an item (Increases Stock).   |
+| **List Returns**      | `GET`  | `/returns` | `?skip=0&limit=100`                 | List return history.                |
 
-### Business Logic Requirements (Backend Service)
+### Business Logic
 
-**1. Rental Transaction (`type: 'RENTAL'`)**
+**1. Rent Out**
 
-- Create Transaction Record.
-- **Inventory Update**: Decrease `quantity` of selected items by transaction `qty`.
-- **Party Update**:
-  - Increase `balance` by `(Total Value - Paid Amount)`.
-  - Increase `activeItems` count.
-  - Set Status to `open` or `payment_due`.
+- **Trigger**: `POST /rent`
+- **Logic**:
+  - Check `AvailableStock` for `itemId`.
+  - If `availableQty` >= `itemQty`:
+    - Decrement `availableQty`.
+    - Increment `RentedOutQty`.
+    - Create `RentOutTxn` record.
+  - Else: Return `400 Insufficient Stock`.
 
-**2. Return Transaction (`type: 'RETURN'`)**
+**2. Return**
 
-- Create Transaction Record.
-- **Inventory Update**: Increase `quantity` of returned items.
-- **Party Update**:
-  - Decrease `balance` by `Paid Amount` (if settling checks/cash) or just log return if paying later? _Current UI assumes 'Settlement Amount' reduces balance._
-  - Decrease `activeItems` count.
-  - Recalculate Status (e.g., if `activeItems == 0` and `balance == 0` -> `closed`).
-
-**Data Model (Transaction):**
-
-```json
-{
-  "id": "uuid",
-  "partyId": "uuid",
-  "type": "enum('RENTAL', 'RETURN')",
-  "items": [{ "itemId": "uuid", "qty": "int", "price": "number" }],
-  "totalAmount": "number",
-  "paidAmount": "number",
-  "date": "timestamp"
-}
-```
+- **Trigger**: `POST /returns`
+- **Logic**:
+  - Increment `availableQty`.
+  - Decrement `RentedOutQty`.
+  - Create `ReturnTxn` record.

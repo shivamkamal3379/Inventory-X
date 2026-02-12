@@ -19,6 +19,11 @@ class ItemCreate(ItemBase):
     pass
 
 
+class ItemUpdate(ItemBase):
+    name: Optional[str] = None
+    pass
+
+
 class ItemOut(ItemBase):
     itemId: int
     created_at: datetime
