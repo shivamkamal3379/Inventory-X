@@ -12,7 +12,6 @@ router = APIRouter(prefix="/rent", tags=["rent"])
 
 @router.post("/", response_model=RentOutTxnOut)
 def create_rent_out(txn: RentOutTxnCreate, db: Session = Depends(get_db)):
-    # TODO: Add logic to check stock and decrement availability
     return rentout_service.create(db, obj_in=txn)
 
 

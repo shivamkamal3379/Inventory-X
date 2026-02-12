@@ -11,7 +11,6 @@ router = APIRouter(prefix="/returns", tags=["returns"])
 
 @router.post("/", response_model=ReturnTxnOut)
 def create_return(txn: ReturnTxnCreate, db: Session = Depends(get_db)):
-    # TODO: Add logic to update stock
     return return_service.create(db, obj_in=txn)
 
 
