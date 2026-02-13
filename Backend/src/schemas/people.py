@@ -39,6 +39,8 @@ class PartyBase(BaseModel):
     agentName: Optional[str] = None
     siteAddress: Optional[str] = None
     status: PartyStatus = PartyStatus.ACTIVE
+    balance: Optional[float] = 0.0
+    activeItems: Optional[int] = 0
 
 
 class PartyCreate(PartyBase):
