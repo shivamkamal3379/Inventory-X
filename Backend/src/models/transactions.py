@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer, DateTime, ForeignKey
+from sqlalchemy import Column, String, Integer, Float, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from src.core.database import Base
@@ -25,8 +25,11 @@ class RentOutTxn(Base):
     PartyName = Column(String(100))
     agentId = Column(Integer, ForeignKey("t_Agents.agentId"))
     AgentName = Column(String(100))
+    itemId = Column(Integer, ForeignKey("t_Item.itemId"))
     Item = Column(String(100))  # Item Name? Or FK? ERD says string.
     itemQty = Column(Integer)
+    rentAmount = Column(Float, default=0.0)
+    paidAmount = Column(Float, default=0.0)
     TxnDate = Column(DateTime, default=func.now())
 
     party = relationship(
@@ -44,8 +47,10 @@ class ReturnTxn(Base):
     PartyName = Column(String(100))
     agentId = Column(Integer, ForeignKey("t_Agents.agentId"))
     AgentName = Column(String(100))
+    itemId = Column(Integer, ForeignKey("t_Item.itemId"))
     Item = Column(String(100))
     itemQty = Column(Integer)
+    refundAmount = Column(Float, default=0.0)
     TxnDate = Column(DateTime, default=func.now())
 
     party = relationship("src.models.people.Party")

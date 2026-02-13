@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer, ForeignKey, DateTime, Enum
+from sqlalchemy import Column, String, Integer, Float, ForeignKey, DateTime, Enum
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from src.core.database import Base
@@ -39,6 +39,8 @@ class Party(Base):
     agentName = Column(String(100))  # Denormalized or just a field? Keeping as per ERD
     siteAddress = Column(String(255))
     status = Column(Enum(PartyStatus), default=PartyStatus.ACTIVE)
+    balance = Column(Float, default=0.0)
+    activeItems = Column(Integer, default=0)
     dateCreated = Column(DateTime, default=func.now())
 
     agent = relationship("Agent", back_populates="parties")

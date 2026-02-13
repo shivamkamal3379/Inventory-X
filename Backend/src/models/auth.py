@@ -1,18 +1,13 @@
-from sqlalchemy import Column, String, DateTime
+from sqlalchemy import Column, String, Integer, Boolean, DateTime
 from sqlalchemy.sql import func
 from src.core.database import Base
-import uuid
 
 
-def generate_uuid():
-    return str(uuid.uuid4())
+class User(Base):
+    __tablename__ = "users"
 
-
-class AuthToken(Base):
-    __tablename__ = "auth_tokens"
-
-    id = Column(String(36), primary_key=True, default=generate_uuid)
-    user_id = Column(String(36), nullable=False)
-    token = Column(String(255), nullable=False, unique=True)
-    expires_at = Column(DateTime, nullable=False)
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    username = Column(String(100), unique=True, nullable=False, index=True)
+    hashed_password = Column(String(255), nullable=False)
+    is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=func.now())
