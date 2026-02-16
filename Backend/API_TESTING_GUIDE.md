@@ -232,10 +232,22 @@ GET /parties/
 
 ```
 GET /parties/CUST001
+Content-Type: application/json
 ```
 
-> Check `balance`, `activeItems`, and `status` fields in the response.
-
+```json
+{
+  "id": "CUST001",
+  "name": "John Doe",
+  "mobile": "9876543210",
+  "aadhaar": "9876-5432-1098",
+  "address": "123 Main St",
+  "email": "john@example.com",
+  "agentId": 1,
+  "status" : "active",
+  "siteAddress": "456 Site Ave"
+}
+```
 ### Update Party
 
 ```
@@ -250,11 +262,6 @@ Content-Type: application/json
 }
 ```
 
-### Delete Party
-
-```
-DELETE /parties/CUST001
-```
 
 ---
 
@@ -270,15 +277,10 @@ Content-Type: application/json
 ```json
 {
   "partyId": "CUST001",
-  "itemId": 1,
-  "itemQty": 3,
-  "rentAmount": 500.0,
-  "paidAmount": 200.0,
-  "Item": "Heavy Duty Drill",
   "agentId": 1,
-  "AgentName": "Agent Smith",
-  "PartyName": "John Doe",
-  "contractId": 101
+  "contractId": 101,
+  "itemId": 1,
+  "itemQty": 3,    
 }
 ```
 
@@ -287,19 +289,8 @@ Content-Type: application/json
 | Endpoint               | Expected Change                                              |
 | ---------------------- | ------------------------------------------------------------ |
 | `GET /items/1/stock`   | `availableQty` decreases by 3, `RentedOutQty` increases by 3 |
-| `GET /parties/CUST001` | `balance` = 300, `activeItems` = 3, `status` = "active"      |
+| `GET /parties/CUST001` |  `status` = "active"      |
 
-### List All Rentals
-
-```
-GET /rent/
-```
-
-### Get Rental by ID
-
-```
-GET /rent/1
-```
 
 ### Get Rentals by Party
 
@@ -321,13 +312,10 @@ Content-Type: application/json
 ```json
 {
   "partyId": "CUST001",
+  "agentId": 1,
   "itemId": 1,
   "itemQty": 2,
-  "refundAmount": 100.0,
-  "Item": "Heavy Duty Drill",
-  "agentId": 1,
-  "AgentName": "Agent Smith",
-  "PartyName": "John Doe"
+  "Return Date": timestamp 
 }
 ```
 
@@ -336,19 +324,8 @@ Content-Type: application/json
 | Endpoint               | Expected Change                                                  |
 | ---------------------- | ---------------------------------------------------------------- |
 | `GET /items/1/stock`   | `availableQty` increases by 2, `RentedOutQty` decreases by 2     |
-| `GET /parties/CUST001` | `activeItems` drops to 1, `balance` updates, `status` may change |
+| `GET /parties/CUST001` | `status` may change |
 
-### List All Returns
-
-```
-GET /returns/
-```
-
-### Get Return by ID
-
-```
-GET /returns/1
-```
 
 ### Get Returns by Party
 
