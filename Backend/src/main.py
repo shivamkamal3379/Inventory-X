@@ -41,3 +41,5 @@ app.include_router(dashboard.router)
 @app.get("/")
 def root():
     return {"status": "running", "app": "Inventory X Backend"}
+
+
