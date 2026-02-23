@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import datetime
 
@@ -9,7 +9,7 @@ class ItemBase(BaseModel):
     qty: int = 0
     size: Optional[str] = None
     weight: Optional[str] = None
-    ManufactureYr: Optional[datetime] = None
+    manufactureYr: Optional[datetime] = None
     materialType: Optional[str] = None
     model: Optional[str] = None
     additionalParam1: Optional[str] = None
@@ -21,12 +21,14 @@ class ItemCreate(ItemBase):
 
 class ItemUpdate(ItemBase):
     name: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now())
     pass
 
 
 class ItemOut(ItemBase):
     itemId: int
-    created_at: datetime
+
+    created_at: datetime = Field(default_factory=lambda: datetime.now())
 
     class Config:
         from_attributes = True
@@ -40,6 +42,7 @@ class AvailableStockBase(BaseModel):
 
 class AvailableStockOut(AvailableStockBase):
     itemId: int
+    created_at: datetime = Field(default_factory=lambda: datetime.now())
 
     class Config:
         from_attributes = True
@@ -57,6 +60,8 @@ class RentalPriceCreate(RentalPriceBase):
 
 class RentalPriceOut(RentalPriceBase):
     itemId: int
+    created_at: datetime = Field(default_factory=lambda: datetime.now())
 
     class Config:
         from_attributes = True
+        

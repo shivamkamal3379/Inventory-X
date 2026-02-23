@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import datetime
 from src.models.people import PartyStatus
@@ -18,6 +18,7 @@ class AgentCreate(AgentBase):
 class AgentUpdate(AgentBase):
     AgentName: Optional[str] = None
     mobile: Optional[str] = None
+    updated_at: datetime = Field(default_factory=lambda: datetime.now())
     pass
 
 
