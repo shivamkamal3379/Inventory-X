@@ -2,7 +2,7 @@ from src.services.base import CRUDBase
 from src.models.people import Agent, Party
 from src.schemas.people import AgentCreate, AgentBase, PartyCreate, PartyBase
 
-
+ 
 class CRUDAgent(CRUDBase[Agent, AgentCreate, AgentBase]):
     pass
 
