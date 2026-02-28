@@ -34,7 +34,7 @@ app.include_router(parties.router)
 app.include_router(rent.router)
 app.include_router(returns.router)
 app.include_router(prices.router)
-app.include_router(dashboard.router)
+app.include_router(dashboard.router)     
 
 
 # Root health-check endpoint
