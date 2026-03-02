@@ -87,9 +87,17 @@ function TransactionForm({ mode, onClose, onSave }) {
 
     useEffect(() => {
         const loadData = async () => {
-            const [p, i] = await Promise.all([db.parties.getAll(), db.items.getAll()]);
-            setParties(p);
-            setItems(i);
+            try {
+                const [p, i, pr] = await Promise.all([db.parties.getAll(), db.items.getAll(), db.prices.getAll()]);
+                const itemsWithPrices = i.map(item => {
+                    const priceMatch = pr.find(price => price.itemId === item.itemId);
+                    return { ...item, price: priceMatch ? Number(priceMatch.rent) : 0 };
+                });
+                setParties(p);
+                setItems(itemsWithPrices);
+            } catch (error) {
+                console.error("Failed to load data for transactions:", error);
+            }
         };
         loadData();
     }, []);
@@ -111,7 +119,7 @@ function TransactionForm({ mode, onClose, onSave }) {
             if (item.id === id) {
                 const updates = { [field]: value };
                 if (field === 'itemId') {
-                    const dbItem = items.find(i => i.id === value);
+                    const dbItem = items.find(i => i.itemId == value);
                     if (dbItem) {
                         // For rentals, use price. For returns, usually price is 0 unless restocking fee?
                         // Let's keep price logic for now so "Total Value" is tracked, but for Returns maybe we don't charge?
@@ -235,8 +243,8 @@ function TransactionForm({ mode, onClose, onSave }) {
                                 >
                                     <option value="" className="text-black">Select Item</option>
                                     {items.map(i => (
-                                        <option key={i.id} value={i.id} className="text-black" disabled={mode === 'rental' && i.quantity <= 0}>
-                                            {i.name} {mode === 'rental' ? `(Avail: ${i.quantity})` : ''}
+                                        <option key={i.itemId} value={i.itemId} className="text-black" disabled={mode === 'rental' && i.qty <= 0}>
+                                            {i.name} {mode === 'rental' ? `(Avail: ${i.qty})` : ''}
                                         </option>
                                     ))}
                                 </select>

@@ -26,7 +26,7 @@ export default function Ledger() {
 
   const filteredParties = parties.filter(p => 
     p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.contact.toLowerCase().includes(searchTerm.toLowerCase())
+    (p.mobile && p.mobile.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   const openModal = (party = null) => {
@@ -90,7 +90,7 @@ export default function Ledger() {
                 <thead className="[&_tr]:border-b">
                     <tr className="border-b transition-colors hover:bg-muted/50">
                         <th className="h-12 px-4 align-middle font-medium text-muted-foreground">Name</th>
-                        <th className="h-12 px-4 align-middle font-medium text-muted-foreground">Contact</th>
+                        <th className="h-12 px-4 align-middle font-medium text-muted-foreground">Mobile</th>
                         <th className="h-12 px-4 align-middle font-medium text-muted-foreground">Status</th>
                         <th className="h-12 px-4 align-middle font-medium text-muted-foreground text-center">Active Items</th>
                         <th className="h-12 px-4 align-middle font-medium text-muted-foreground text-right">Balance</th>
@@ -106,7 +106,7 @@ export default function Ledger() {
                         filteredParties.map((party) => (
                             <tr key={party.id} className="border-b transition-colors hover:bg-muted/50">
                                 <td className="p-4 align-middle font-medium">{party.name}</td>
-                                <td className="p-4 align-middle">{party.contact}</td>
+                                <td className="p-4 align-middle">{party.mobile}</td>
                                 <td className="p-4 align-middle">
                                     {getStatusBadge(party.status)}
                                 </td>
@@ -155,9 +155,10 @@ export default function Ledger() {
 function LedgerForm({ party, onClose, onSave }) {
     const [formData, setFormData] = useState({
         name: party?.name || '',
-        contact: party?.contact || '',
+        mobile: party?.mobile || '',
         email: party?.email || '',
-        status: party?.status || 'inactive'
+        status: party?.status || 'inactive',
+        id: party?.id || `CUST${Math.floor(Math.random()*10000)}` // Mock id for creation
     });
     const [loading, setLoading] = useState(false);
 
@@ -192,10 +193,10 @@ function LedgerForm({ party, onClose, onSave }) {
                         />
                     </div>
                     <div className="space-y-2">
-                        <label className="text-sm font-medium">Contact Number</label>
+                        <label className="text-sm font-medium">Mobile Number</label>
                         <Input 
-                            value={formData.contact} 
-                            onChange={e => setFormData({...formData, contact: e.target.value})}
+                            value={formData.mobile} 
+                            onChange={e => setFormData({...formData, mobile: e.target.value})}
                             required 
                         />
                     </div>
