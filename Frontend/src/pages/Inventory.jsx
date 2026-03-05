@@ -84,20 +84,20 @@ export default function Inventory() {
                         <tr><td colSpan={5} className="p-4 text-center text-muted-foreground">No items found.</td></tr>
                     ) : (
                         filteredItems.map((item) => (
-                            <tr key={item.id} className="border-b transition-colors hover:bg-muted/50">
+                            <tr key={item.itemId} className="border-b transition-colors hover:bg-muted/50">
                                 <td className="p-4 align-middle font-medium">{item.name}</td>
                                 <td className="p-4 align-middle">{item.description}</td>
                                 <td className="p-4 align-middle">
-                                    <span className={item.quantity > 0 ? "text-green-500" : "text-red-500"}>
-                                        {item.quantity}
+                                    <span className={item.qty > 0 ? "text-green-500" : "text-red-500"}>
+                                        {item.qty}
                                     </span>
                                 </td>
-                                <td className="p-4 align-middle">{item.totalQuantity}</td>
+                                <td className="p-4 align-middle">{item.qty}</td>
                                 <td className="p-4 align-middle text-right">
                                     <Button variant="ghost" size="icon" onClick={() => openModal(item)}>
                                         <Edit2 className="h-4 w-4" />
                                     </Button>
-                                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDelete(item.id)}>
+                                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDelete(item.itemId)}>
                                         <Trash2 className="h-4 w-4" />
                                     </Button>
                                 </td>
@@ -136,7 +136,7 @@ function InventoryForm({ item, onClose, onSave }) {
     const [formData, setFormData] = useState({
         name: item?.name || '',
         description: item?.description || '',
-        quantity: item?.totalQuantity || 0
+        qty: item?.qty || 0
     });
     const [loading, setLoading] = useState(false);
 
@@ -144,12 +144,10 @@ function InventoryForm({ item, onClose, onSave }) {
         e.preventDefault();
         setLoading(true);
         if (item) {
-            await db.items.update(item.id, { 
+            await db.items.update(item.itemId, { 
                 name: formData.name, 
                 description: formData.description,
-                // Note: Updating total quantity logic 
-                // Simplification: We update total, and diff adds to available?
-                // For demo, let's just update description/name primarily or handle qty reset
+                qty: formData.qty
             });
         } else {
             await db.items.add(formData);
@@ -185,8 +183,8 @@ function InventoryForm({ item, onClose, onSave }) {
                             <label className="text-sm font-medium">Initial Quantity</label>
                             <Input 
                                 type="number"
-                                value={formData.quantity} 
-                                onChange={e => setFormData({...formData, quantity: e.target.value})}
+                                value={formData.qty} 
+                                onChange={e => setFormData({...formData, qty: parseInt(e.target.value) || 0})}
                                 required 
                             />
                         </div>
