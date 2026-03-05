@@ -1,10 +1,33 @@
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { UserPlus, UserCog, FilePlus2, Users, Package } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/Card';
+import { db } from '../services/db';
 
 export default function DashboardHome() {
   const navigate = useNavigate();
+  const [stats, setStats] = useState(null);
+  const [activity, setActivity] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const statsData = await db.dashboard.getStats();
+        // Backend /dashboard/activity returns list of recent transactions
+        const activityData = await db.dashboard.getActivity();
+        setStats(statsData);
+        setActivity(activityData);
+      } catch (e) {
+        console.error("Dashboard fetch error:", e);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
+  }, []);
 
   const container = {
     hidden: { opacity: 0 },
@@ -81,29 +104,54 @@ export default function DashboardHome() {
                 <CardTitle>Overview</CardTitle>
             </CardHeader>
             <CardContent className="pl-2">
-                <div className="h-[200px] flex items-center justify-center text-muted-foreground">
-                    Chart Placeholder
-                </div>
+                {loading ? (
+                    <div className="h-[200px] flex items-center justify-center text-muted-foreground">Loading stats...</div>
+                ) : (
+                    <div className="grid grid-cols-2 gap-4 pt-4 px-4 text-center">
+                        <div className="p-4 border rounded-md bg-accent/30">
+                            <h3 className="font-semibold text-lg">{stats?.totalItems || 0}</h3>
+                            <p className="text-sm text-muted-foreground">Total Items</p>
+                        </div>
+                        <div className="p-4 border rounded-md bg-accent/30">
+                            <h3 className="font-semibold text-lg">{stats?.totalParties || 0}</h3>
+                            <p className="text-sm text-muted-foreground">Total Parties</p>
+                        </div>
+                        <div className="p-4 border rounded-md bg-accent/30">
+                            <h3 className="font-semibold text-lg">{stats?.activeParties || 0}</h3>
+                            <p className="text-sm text-muted-foreground">Active Parties</p>
+                        </div>
+                        <div className="p-4 border rounded-md bg-accent/30">
+                            <h3 className="font-semibold text-lg">{stats?.totalRentedOutQty || 0}</h3>
+                            <p className="text-sm text-muted-foreground">Items Rented</p>
+                        </div>
+                    </div>
+                )}
             </CardContent>
         </Card>
         <Card className="col-span-3">
              <CardHeader>
                 <CardTitle>Recent Activity</CardTitle>
                 <CardDescription>
-                    You made 265 sales this month.
+                    {activity.length} recent transactions.
                 </CardDescription>
             </CardHeader>
             <CardContent>
                 <div className="space-y-4">
-                    {[1, 2, 3].map((i) => (
-                        <div key={i} className="flex items-center">
-                            <div className="ml-4 space-y-1">
-                                <p className="text-sm font-medium leading-none">John Doe</p>
-                                <p className="text-sm text-muted-foreground">Rented 2 Printers</p>
+                    {loading ? (
+                       <p className="text-sm text-muted-foreground">Loading activity...</p>
+                    ) : activity.length === 0 ? (
+                       <p className="text-sm text-muted-foreground">No recent activity.</p>
+                    ) : (
+                        activity.slice(0, 5).map((act, index) => (
+                            <div key={index} className="flex items-center">
+                                <div className="ml-4 space-y-1">
+                                    <p className="text-sm font-medium leading-none">{act.PartyName || 'Unknown Party'}</p>
+                                    <p className="text-sm text-muted-foreground">{act.itemQty} x {act.Item || `Item #${act.itemId}`}</p>
+                                </div>
+                                <div className="ml-auto font-medium">{act.rentAmount ? `+₹${act.rentAmount}` : 'Return'}</div>
                             </div>
-                            <div className="ml-auto font-medium">+₹250.00</div>
-                        </div>
-                    ))}
+                        ))
+                    )}
                 </div>
             </CardContent>
         </Card>
