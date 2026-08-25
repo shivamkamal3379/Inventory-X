@@ -1,20 +1,59 @@
-import { Outlet } from 'react-router-dom';
+import { Outlet, Link } from 'react-router-dom';
+import { Boxes } from 'lucide-react';
 
 export default function AuthLayout() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background relative overflow-hidden">
-        {/* Background Mesh Gradient Effect */}
-        <div className="absolute top-0 left-0 w-full h-full overflow-hidden -z-10">
-            <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] rounded-full bg-primary/20 blur-[120px]" />
-            <div className="absolute top-[40%] -right-[10%] w-[40%] h-[40%] rounded-full bg-purple-500/20 blur-[120px]" />
+    <div className="min-h-screen bg-canvas lg:grid lg:grid-cols-2">
+      {/* Form column */}
+      <div className="flex min-h-screen flex-col justify-center px-6 py-12 lg:min-h-0 lg:px-16">
+        <div className="mx-auto w-full max-w-sm">
+          <Link to="/" className="mb-10 inline-flex items-center gap-2.5">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand">
+              <Boxes className="h-4.5 w-4.5 text-brand-text" />
+            </span>
+            <span className="text-[15px] font-semibold tracking-tight text-text">Inventory X</span>
+          </Link>
+          <Outlet />
         </div>
+      </div>
 
-      <div className="w-full max-w-md p-8 bg-card/50 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl">
-        <div className="mb-8 text-center">
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent">InventoryX</h1>
-            <p className="text-sm text-muted-foreground mt-2">Admin Access Portal</p>
+      {/* Brand column — decorative, so it is hidden rather than stacked on mobile */}
+      <div className="relative hidden overflow-hidden bg-surface-sunken border-l border-line lg:block">
+        <div
+          className="absolute inset-0 opacity-[0.35]"
+          style={{
+            backgroundImage:
+              'radial-gradient(circle at 1px 1px, hsl(var(--line-strong)) 1px, transparent 0)',
+            backgroundSize: '28px 28px',
+          }}
+          aria-hidden="true"
+        />
+        <div className="relative flex h-full flex-col justify-center px-16">
+          <blockquote className="max-w-md">
+            <p className="text-2xl font-semibold leading-snug tracking-tight text-text">
+              Know exactly what is out, what is due back, and who owes what.
+            </p>
+            <p className="mt-5 text-sm leading-relaxed text-text-muted">
+              Rental contracts with per-day billing, live stock, and a party ledger that
+              always reconciles.
+            </p>
+          </blockquote>
+
+          <dl className="mt-12 grid max-w-md grid-cols-3 gap-6 border-t border-line pt-8">
+            {[
+              ['Stock', 'Never oversold'],
+              ['Billing', 'Priced by duration'],
+              ['Ledger', 'Always balanced'],
+            ].map(([term, detail]) => (
+              <div key={term}>
+                <dt className="text-[11px] font-semibold uppercase tracking-wider text-text-subtle">
+                  {term}
+                </dt>
+                <dd className="mt-1 text-[13px] text-text">{detail}</dd>
+              </div>
+            ))}
+          </dl>
         </div>
-        <Outlet />
       </div>
     </div>
   );

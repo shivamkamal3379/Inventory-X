@@ -1,20 +1,36 @@
-from sqlalchemy import Column, String, Integer, Float, ForeignKey, DateTime, Enum
-from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func
-from src.core.database import Base
 import enum
+
+from sqlalchemy import (
+    CheckConstraint,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+)
+from sqlalchemy import Enum as SAEnum
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.sql import func
+
+from src.core.database import Base
 
 
 class Agent(Base):
     __tablename__ = "t_Agents"
 
-    agentId = Column(Integer, primary_key=True, autoincrement=True)
-    AgentName = Column(String(100), nullable=False)
-    mobile = Column(String(20), nullable=False)  # Changed to String for phone numbers
-    aadhar = Column(String(20))  # Changed to String
-    email = Column(String(100))
+    agentId: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    AgentName: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    mobile: Mapped[str] = mapped_column(String(20), nullable=False)
+    aadhar: Mapped[str | None] = mapped_column(String(20))
+    email: Mapped[str | None] = mapped_column(String(255))
+    created_at: Mapped[object] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[object | None] = mapped_column(
+        DateTime(timezone=True), onupdate=func.now(), nullable=True
+    )
 
-    parties = relationship("Party", back_populates="agent")
+    parties: Mapped[list["Party"]] = relationship(back_populates="agent")
 
 
 class PartyStatus(str, enum.Enum):
@@ -25,22 +41,43 @@ class PartyStatus(str, enum.Enum):
     CLOSED = "closed"
 
 
+# Persist the lowercase *values* ("active"), not the member names ("ACTIVE"),
+# so what the database holds matches what the API returns.
+party_status_enum = SAEnum(
+    PartyStatus,
+    name="party_status",
+    values_callable=lambda enum_cls: [member.value for member in enum_cls],
+)
+
+
 class Party(Base):
     __tablename__ = "t_party"
+    __table_args__ = (
+        CheckConstraint('"activeItems" >= 0', name="ck_party_active_items_non_negative"),
+    )
 
-    id = Column(String(50), primary_key=True)
-    name = Column(String(100), nullable=False)
-    mobile = Column(String(20), nullable=False)
-    aadhaar = Column(String(20))
-    secondaryMobile = Column(String(20))
-    email = Column(String(100))
-    address = Column(String(255))
-    agentId = Column(Integer, ForeignKey("t_Agents.agentId"))
-    agentName = Column(String(100))  # Denormalized or just a field? Keeping as per ERD
-    siteAddress = Column(String(255))
-    status = Column(Enum(PartyStatus), default=PartyStatus.ACTIVE)
-    balance = Column(Float, default=0.0)
-    activeItems = Column(Integer, default=0)
-    dateCreated = Column(DateTime, default=func.now())
+    id: Mapped[str] = mapped_column(String(50), primary_key=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    mobile: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
+    aadhaar: Mapped[str | None] = mapped_column(String(20))
+    secondaryMobile: Mapped[str | None] = mapped_column(String(20))
+    email: Mapped[str | None] = mapped_column(String(255))
+    address: Mapped[str | None] = mapped_column(String(255))
+    agentId: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("t_Agents.agentId", ondelete="SET NULL"), index=True
+    )
+    agentName: Mapped[str | None] = mapped_column(String(100))
+    siteAddress: Mapped[str | None] = mapped_column(String(255))
+    status: Mapped[PartyStatus] = mapped_column(
+        party_status_enum, default=PartyStatus.ACTIVE, nullable=False, index=True
+    )
+    balance: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
+    activeItems: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    dateCreated: Mapped[object] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[object | None] = mapped_column(
+        DateTime(timezone=True), onupdate=func.now(), nullable=True
+    )
 
-    agent = relationship("Agent", back_populates="parties")
+    agent: Mapped["Agent | None"] = relationship(back_populates="parties")

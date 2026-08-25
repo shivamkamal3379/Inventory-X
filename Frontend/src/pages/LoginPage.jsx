@@ -1,101 +1,92 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { Lock, User } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { KeyRound, User } from 'lucide-react';
 import { Button } from '../components/ui/Button';
-import { Input } from '../components/ui/Input';
+import { Field, Input } from '../components/ui/Input';
 import { authService } from '../services/auth';
+import { errorMessage } from '../services/apiClient';
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
   const navigate = useNavigate();
+  const location = useLocation();
+  const from = location.state?.from || '/dashboard';
 
-  const handleLogin = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setIsLoading(true);
+    setLoading(true);
     setError('');
-
     try {
-      const result = await authService.login(username, password);
-      
-      if (result.success) {
-        navigate('/dashboard');
-      } else {
-        setError(result.message);
-      }
+      await authService.login(username.trim(), password);
+      navigate(from, { replace: true });
     } catch (err) {
-      setError('An error occurred. Please try again.');
+      setError(errorMessage(err, 'Sign in failed. Please try again.'));
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.5 }}
-      className="space-y-6"
-    >
-      <form onSubmit={handleLogin} className="space-y-4">
-        <div className="space-y-2">
-            <div className="relative">
-                <User className="absolute left-3 top-2.5 h-5 w-5 text-muted-foreground" />
-                <Input 
-                    type="text" 
-                    placeholder="Username" 
-                    className="pl-10 bg-muted/50 border-border"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    required
-                />
-            </div>
-        </div>
-        <div className="space-y-2">
-           <div className="relative">
-                <Lock className="absolute left-3 top-2.5 h-5 w-5 text-muted-foreground" />
-                <Input 
-                    type="password" 
-                    placeholder="Password" 
-                    className="pl-10 bg-muted/50 border-border"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                />
-            </div>
-        </div>
+    <div>
+      <h1 className="text-xl font-semibold tracking-tight text-text">Sign in</h1>
+      <p className="mt-1.5 text-[13px] text-text-muted">
+        Enter your credentials to reach the dashboard.
+      </p>
+
+      <form onSubmit={handleSubmit} className="mt-7 space-y-4" noValidate>
+        <Field label="Username" required>
+          {(props) => (
+            <Input
+              {...props}
+              autoComplete="username"
+              autoFocus
+              leadingIcon={User}
+              placeholder="admin"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              invalid={Boolean(error)}
+              required
+            />
+          )}
+        </Field>
+
+        <Field label="Password" required>
+          {(props) => (
+            <Input
+              {...props}
+              type="password"
+              autoComplete="current-password"
+              leadingIcon={KeyRound}
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              invalid={Boolean(error)}
+              required
+            />
+          )}
+        </Field>
 
         {error && (
-            <motion.p 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="text-sm text-red-400 text-center"
-            >
-                {error}
-            </motion.p>
+          <div role="alert" className="rounded-lg border border-danger/25 bg-danger-soft px-3 py-2.5">
+            <p className="text-[13px] text-danger">{error}</p>
+          </div>
         )}
 
-        <Button 
-            type="submit" 
-            className="w-full bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90"
-            isLoading={isLoading}
-        >
-            Sign In
+        <Button type="submit" size="lg" className="w-full" isLoading={loading}>
+          Sign in
         </Button>
       </form>
-      
-      <div className="text-center text-xs text-muted-foreground">
-        Use <strong>admin</strong> / <strong>password</strong> to login
-      </div>
 
-      <div className="text-center pt-4">
-        <Button variant="link" onClick={() => navigate('/')} className="text-muted-foreground hover:text-primary">
-            ← Return to Home
-        </Button>
-      </div>
-    </motion.div>
+      {/* The old page printed "Use admin / password to login" on the sign-in
+          screen. Real credentials are configured per deployment via
+          FIRST_ADMIN_USERNAME / FIRST_ADMIN_PASSWORD. */}
+      <p className="mt-6 text-center text-[12px] text-text-subtle">
+        Lost access? Ask your administrator to reset your account.
+      </p>
+    </div>
   );
 }

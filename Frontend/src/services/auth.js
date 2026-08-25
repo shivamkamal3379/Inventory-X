@@ -1,38 +1,58 @@
-import apiClient from './apiClient';
+import apiClient, { tokenStore } from './apiClient';
+
+function decodeExpiry(token) {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return typeof payload.exp === 'number' ? payload.exp * 1000 : null;
+  } catch {
+    return null;
+  }
+}
 
 export const authService = {
-  login: async (username, password) => {
-    try {
-      const params = new URLSearchParams();
-      params.append('username', username);
-      params.append('password', password);
+  async login(username, password) {
+    // The token endpoint follows the OAuth2 password flow, which is
+    // form-encoded rather than JSON.
+    const params = new URLSearchParams({ username, password });
+    const { data } = await apiClient.post('/auth/login', params, {
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    });
+    tokenStore.set(data.access_token);
+    return data;
+  },
 
-      const response = await apiClient.post('/auth/login', params, {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded'
-        }
-      });
-      const data = response.data;
-      
-      if (data.access_token) {
-        localStorage.setItem('token', data.access_token);
-        return { success: true, token: data.access_token };
-      }
-      return { success: false, message: 'Authentication failed' };
-    } catch (error) {
-      console.error('Login error:', error);
-      return { 
-        success: false, 
-        message: error.response?.data?.detail || 'Invalid credentials' 
-      };
+  logout() {
+    tokenStore.clear();
+  },
+
+  async me() {
+    const { data } = await apiClient.get('/auth/me');
+    return data;
+  },
+
+  async changePassword(currentPassword, newPassword) {
+    await apiClient.post('/auth/change-password', {
+      current_password: currentPassword,
+      new_password: newPassword,
+    });
+  },
+
+  /**
+   * Checks the token is present *and* unexpired.
+   *
+   * The old guard only checked that a string existed in localStorage, so an
+   * expired session rendered the whole dashboard before every request failed
+   * with 401 and bounced the user out.
+   */
+  isAuthenticated() {
+    const token = tokenStore.get();
+    if (!token) return false;
+    const expiry = decodeExpiry(token);
+    if (expiry === null) return true; // unparseable: let the server decide
+    if (expiry <= Date.now()) {
+      tokenStore.clear();
+      return false;
     }
+    return true;
   },
-
-  logout: () => {
-    localStorage.removeItem('token');
-  },
-
-  isAuthenticated: () => {
-    return !!localStorage.getItem('token');
-  }
 };
