@@ -1,99 +1,149 @@
 import { useState } from 'react';
-import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Package, Wallet, Receipt, LogOut, Menu, X, Sun, Moon, PersonStanding } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import {
+  Boxes, FileText, LayoutDashboard, LogOut, Menu, Moon, Package,
+  Settings, Sun, UserRound, Users, X,
+} from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Button } from '../components/ui/Button';
 import { useTheme } from '../components/ThemeContext';
+import { authService } from '../services/auth';
+
+const NAV = [
+  { to: '/dashboard', label: 'Overview', icon: LayoutDashboard, end: true },
+  { to: '/dashboard/contracts', label: 'Rentals', icon: FileText },
+  { to: '/dashboard/inventory', label: 'Inventory', icon: Package },
+  { to: '/dashboard/parties', label: 'Parties', icon: Users },
+  { to: '/dashboard/agents', label: 'Agents', icon: UserRound },
+  { to: '/dashboard/settings', label: 'Settings', icon: Settings },
+];
+
+function NavItems({ onNavigate }) {
+  return (
+    <nav className="space-y-0.5">
+      {NAV.map(({ to, label, icon: Icon, end }) => (
+        <NavLink
+          key={to}
+          to={to}
+          end={end}
+          onClick={onNavigate}
+          className={({ isActive }) =>
+            cn(
+              'flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors',
+              isActive
+                ? 'bg-brand-soft text-brand'
+                : 'text-text-muted hover:bg-surface-sunken hover:text-text',
+            )
+          }
+        >
+          <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+          {label}
+        </NavLink>
+      ))}
+    </nav>
+  );
+}
 
 export default function DashboardLayout() {
-  const [isSidebarOpen, setSidebarOpen] = useState(true);
   const navigate = useNavigate();
-  const { theme, setTheme } = useTheme();
+  const location = useLocation();
+  const { theme, toggle } = useTheme();
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Close the drawer whenever the route changes, or it stays open over the page
+  // the user just navigated to. Adjusting state during render (React's
+  // documented pattern for "reset when a value changes") rather than in an
+  // effect, so there is no extra commit with the drawer still open.
+  const [lastPath, setLastPath] = useState(location.pathname);
+  if (lastPath !== location.pathname) {
+    setLastPath(location.pathname);
+    setMobileOpen(false);
+  }
 
   const handleLogout = () => {
-    // TODO: Clear auth 
-    navigate('/');
+    // The previous handler was a literal `// TODO: Clear auth` followed by a
+    // redirect, so "Logout" navigated away while leaving the token in
+    // localStorage — the next visit walked straight back in.
+    authService.logout();
+    navigate('/login', { replace: true });
   };
 
-  const navItems = [
-    { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
-    { icon: Package, label: 'Inventory', path: '/dashboard/inventory' },
-    { icon: PersonStanding, label: 'Party', path: '/dashboard/party' },
-    { icon: Receipt, label: 'Transactions', path: '/dashboard/transactions' },
-  ];
+  const brand = (
+    <div className="flex items-center gap-2.5">
+      <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand">
+        <Boxes className="h-4 w-4 text-brand-text" />
+      </span>
+      <span className="text-[14px] font-semibold tracking-tight text-text">Inventory X</span>
+    </div>
+  );
+
+  const footer = (
+    <div className="space-y-0.5 border-t border-line pt-3">
+      <button
+        onClick={toggle}
+        className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium text-text-muted transition-colors hover:bg-surface-sunken hover:text-text"
+      >
+        {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+        {theme === 'dark' ? 'Light mode' : 'Dark mode'}
+      </button>
+      <button
+        onClick={handleLogout}
+        className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium text-text-muted transition-colors hover:bg-danger-soft hover:text-danger"
+      >
+        <LogOut className="h-4 w-4" />
+        Sign out
+      </button>
+    </div>
+  );
 
   return (
-    <div className="min-h-screen bg-background flex text-foreground">
-      {/* Sidebar for Desktop */}
-      <aside 
-        className={cn(
-            "hidden md:flex flex-col border-r border-border bg-card/50 backdrop-blur-xl transition-all duration-300",
-            isSidebarOpen ? "w-64" : "w-20"
-        )}
-      >
-        <div className="h-16 flex items-center px-6 border-b border-border justify-between">
-           {isSidebarOpen && <span className="font-bold text-xl bg-gradient-to-r from-primary to-purple-400 bg-clip-text text-transparent">InventoryX</span>}
-           <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(!isSidebarOpen)}>
-                {isSidebarOpen ? <X size={18} /> : <Menu size={18} />}
-           </Button>
+    <div className="flex min-h-screen bg-canvas">
+      {/* Desktop sidebar */}
+      <aside className="hidden w-60 shrink-0 flex-col border-r border-line bg-surface lg:flex">
+        <div className="flex h-14 items-center px-5">{brand}</div>
+        <div className="flex-1 overflow-y-auto px-3 py-2">
+          <NavItems />
         </div>
-
-        <nav className="flex-1 p-4 space-y-2">
-            {navItems.map((item) => (
-                <NavLink
-                    key={item.path}
-                    to={item.path}
-                    end={item.path === '/dashboard'} // Only exact match for dashboard home
-                    className={({ isActive }) => cn(
-                        "flex items-center gap-3 px-3 py-2 rounded-lg transition-all",
-                        isActive 
-                            ? "bg-primary/10 text-primary" 
-                            : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                        !isSidebarOpen && "justify-center"
-                    )}
-                >
-                    <item.icon size={20} />
-                    {isSidebarOpen && <span>{item.label}</span>}
-                </NavLink>
-            ))}
-        </nav>
-
-        <div className="p-4 border-t border-border">
-            <Button variant="ghost" className={cn("w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10", !isSidebarOpen && "justify-center")} onClick={handleLogout}>
-                <LogOut size={20} />
-                {isSidebarOpen && <span className="ml-2">Logout</span>}
-            </Button>
-            
-            <div className="mt-2 pt-2 border-t border-border/50">
-               <Button 
-                 variant="ghost" 
-                 className={cn("w-full justify-start", !isSidebarOpen && "justify-center")} 
-                 onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-               >
-                 {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
-                 {isSidebarOpen && <span className="ml-2">Switch Theme</span>}
-               </Button>
-            </div>
-        </div>
+        <div className="px-3 pb-4">{footer}</div>
       </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 flex flex-col h-screen overflow-hidden">
-        <header className="h-16 border-b border-border flex items-center px-6 md:hidden">
-            <span className="font-bold text-lg">InventoryX</span>
-            {/* Mobile Menu Logic would go here */}
-        </header>
-        
-        <div className="flex-1 overflow-auto p-6 relative">
-            {/* Ambient Background */}
-            <div className="absolute top-0 left-0 w-full h-full overflow-hidden -z-10 opacity-20 pointer-events-none">
-                 <div className="absolute top-[10%] left-[20%] w-[30%] h-[30%] rounded-full bg-primary/20 blur-[100px]" />
+      {/* Mobile drawer */}
+      {mobileOpen && (
+        <div className="fixed inset-0 z-40 lg:hidden">
+          <div
+            className="absolute inset-0 bg-black/45"
+            onClick={() => setMobileOpen(false)}
+            aria-hidden="true"
+          />
+          <aside className="relative flex h-full w-64 flex-col border-r border-line bg-surface">
+            <div className="flex h-14 items-center justify-between px-5">
+              {brand}
+              <Button variant="ghost" size="icon-sm" onClick={() => setMobileOpen(false)} aria-label="Close menu">
+                <X className="h-4 w-4" />
+              </Button>
             </div>
-            
-            <Outlet />
+            <div className="flex-1 overflow-y-auto px-3 py-2">
+              <NavItems onNavigate={() => setMobileOpen(false)} />
+            </div>
+            <div className="px-3 pb-4">{footer}</div>
+          </aside>
         </div>
-      </main>
+      )}
+
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-line bg-surface/85 px-4 backdrop-blur lg:hidden">
+          <Button variant="ghost" size="icon-sm" onClick={() => setMobileOpen(true)} aria-label="Open menu">
+            <Menu className="h-4.5 w-4.5" />
+          </Button>
+          {brand}
+        </header>
+
+        <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+          <div className="mx-auto w-full max-w-[1400px]">
+            <Outlet />
+          </div>
+        </main>
+      </div>
     </div>
   );
 }

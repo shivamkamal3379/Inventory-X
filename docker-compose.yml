@@ -1,0 +1,75 @@
+# Inventory X — production stack.
+#
+#   cp .env.example .env      # then edit the secrets
+#   docker compose up -d --build
+#
+# Only the web container publishes a port. PostgreSQL and the API are reachable
+# only on the internal network, so neither is exposed to the internet.
+
+name: inventoryx
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-inventoryx}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:-inventoryx}
+      # Deterministic collation, so ORDER BY does not depend on the host locale.
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-inventoryx} -d ${POSTGRES_DB:-inventoryx}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    networks: [backend]
+
+  api:
+    build:
+      context: ./Backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      DEBUG: "false"
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-inventoryx}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-inventoryx}
+      SECRET_KEY: ${SECRET_KEY:?SECRET_KEY is required}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-720}
+      ALLOW_REGISTRATION: ${ALLOW_REGISTRATION:-false}
+      FIRST_ADMIN_USERNAME: ${FIRST_ADMIN_USERNAME:-}
+      FIRST_ADMIN_PASSWORD: ${FIRST_ADMIN_PASSWORD:-}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8080}
+      # Served behind nginx at /api, so the OpenAPI paths must carry that prefix.
+      ROOT_PATH: /api
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOG_JSON: ${LOG_JSON:-true}
+      WEB_CONCURRENCY: ${WEB_CONCURRENCY:-2}
+    networks: [backend]
+
+  web:
+    build:
+      context: ./Frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api}
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "${WEB_PORT:-8080}:80"
+    networks: [backend]
+
+volumes:
+  db_data:
+    driver: local
+
+networks:
+  backend:
+    driver: bridge

@@ -1,210 +1,158 @@
-# RentalPro / Inventory X
+# Inventory X
 
-## Project Overview
+Rental inventory management for equipment-hire businesses: track stock, rent it out
+on a contract, take it back with the bill calculated from how long it was held, and
+keep every customer balance straight.
 
-**RentalPro (Inventory X)** is a comprehensive full-stack application designed to manage rental inventory, track stock availability, and handle customer transactions efficiently.
-
-Ideally suited for rental businesses, it provides functionalities for:
-
-- Managing Rental Agents
-- Inventory Item Tracking (with Stock Management)
-- Customer/Party Registration
-- Processing Rentals (Rent Out) & Returns
-
-## Technology Stack
-
-### Backend
-
-- **Framework**: [FastAPI](https://fastapi.tiangolo.com/) (Python)
-- **Database**: SQL Database (SQLite for development, MySQL ready) via [SQLAlchemy](https://www.sqlalchemy.org/)
-- **Validation**: [Pydantic](https://docs.pydantic.dev/)
-
-### Frontend
-
-- **Framework**: [React](https://react.dev/) via [Vite](https://vitejs.dev/)
-- **Styling**: (Check Frontend directory for specific styling libraries)
+- **Backend** — FastAPI · SQLAlchemy 2 · PostgreSQL · Alembic
+- **Frontend** — React 19 · Vite · Tailwind CSS 4
+- **Deployment** — Docker Compose (PostgreSQL + API + nginx-served SPA)
 
 ---
 
-## Features
+## Quick start
 
-- **Agent Management**: Register and manage agents who facilitate rentals.
-- **Inventory Control**:
-  - Add new items with rental rates.
-  - Track total vs. available stock quantities. (In Progress)
-- **Customer Database**: Maintain records of parties (customers) renting equipment.
-- **Transaction Processing**:
-  - **Rent Out**: Assign items to customers, linked to agents.
-  - **Returns**: Process returned items and update inventory status.
+```bash
+cp .env.example .env
+```
 
----
+Fill in the three required values (`POSTGRES_PASSWORD`, `SECRET_KEY`,
+`FIRST_ADMIN_PASSWORD`), then:
 
-## Setup & Installation
+```bash
+docker compose up -d --build
+```
 
-### Prerequisites
+The app is at **http://localhost:8080**. Sign in with the `FIRST_ADMIN_USERNAME` /
+`FIRST_ADMIN_PASSWORD` you set — the backend creates that account on first boot, so
+registration can stay closed.
 
-- Python 3.10+
-- Node.js & npm
+To load demo data (four customers, eight items, and rentals in every state):
 
-### Backend Setup
-
-1.  Navigate to the `Backend` directory:
-    ```bash
-    cd Backend
-    ```
-2.  Create a virtual environment (optional but recommended):
-    ```bash
-    python -m venv env
-    source env/bin/activate  # On Windows: env\Scripts\activate
-    ```
-3.  Install dependencies:
-    ```bash
-    pip install -r requirements.txt
-    ```
-4.  Configure Environment Variables:
-    - Create a `.env` file in the `Backend` root.
-    - Add your database URL (Example for SQLite):
-      ```env
-      DATABASE_URL=sqlite:///./inventory.db
-      ```
-5.  Run the server:
-    ```bash
-    uvicorn src.main:app --reload
-    ```
-    The API will be available at [http://127.0.0.1:8000](http://127.0.0.1:8000).
-    Interactive API docs: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs).
-
-### Frontend Setup
-
-1.  Navigate to the `Frontend` directory:
-    ```bash
-    cd Frontend
-    ```
-2.  Install dependencies:
-    ```bash
-    npm install
-    ```
-3.  Start the development server:
-    ```bash
-    npm run dev
-    ```
-    The application will typically run at [http://localhost:5173](http://localhost:5173) (check terminal output).
-
----
-
-## API Documentation
-
-### 1. Agents
-
-**Endpoint**: `/agents/`
-**Method**: `POST`
-**Description**: Create a new rental agent.
-
-**Request Body (JSON):**
-
-```json
-{
-  "AgentName": "John Doe",
-  "mobile": "9876543210",
-  "aadhar": "1234-5678-9012", // Optional
-  "email": "john@example.com" // Optional
-}
+```bash
+docker compose exec api python scripts/seed_demo.py --reset --force
 ```
 
 ---
 
-### 2. Items (Inventory)
+## How the domain works
 
-**Endpoint**: `/items/`
-**Method**: `POST`
-**Description**: Create a new inventory item. This automatically initializes stock for the item.
+**A rental is a contract, not a row per item.** One `POST /contracts/` carries every
+item going out, under one invoice number (`INV-000001`). That is what makes a
+printable bill, a single return, and duration-based billing possible.
 
-**Request Body (JSON):**
+**Rent accrues on return, not at pickup.** The amount depends on how long the goods
+were actually held, which is unknown when they leave. So:
 
-```json
-{
-  "name": "Heavy Duty Drill",
-  "description": "Cordless power drill", // Optional
-  "qty": 10,
-  "rent": 500.0, // Daily rent amount
-  "rentFrequency": "daily", // Optional
-  "size": "Medium", // Optional
-  "weight": "2kg", // Optional
-  "materialType": "Steel" // Optional
-}
-```
+| Event | What happens to the ledger |
+|---|---|
+| Contract created | Stock reserved. Advance (if any) posts as a **credit** to the party. No rent charged yet. |
+| Items returned | Stock restored. `rate × qty × periods held` posts as a **debit**. Any payment taken reduces it. |
+| Payment recorded | Reduces the party's balance. |
 
-**Endpoint**: `/items/{item_id}/stock`
-**Method**: `GET`
-**Description**: Check available stock for an item.
+A positive party balance means they owe you; negative means you are holding their
+money.
 
-**Response:**
+**Billing rules** (`Backend/src/services/billing.py`, unit-tested in isolation):
 
-```json
-{
-  "itemId": 1,
-  "qty": 10,
-  "RentedOutQty": 0,
-  "availableQty": 10
-}
-```
+- Duration is counted in whole days between pickup and return.
+- A same-day return still costs one period — no rental shop bills zero.
+- Part periods round up: on a weekly rate, 8 days is 2 weeks.
+- The rate is the one recorded on the contract line at pickup, so changing your
+  price list never rewrites a bill you already issued.
+
+**Stock cannot go negative.** Availability is read under a row lock
+(`SELECT … FOR UPDATE`), so two people writing rentals at the same moment cannot
+both pass the availability check. There is a test that proves it: remove the lock
+and 20 concurrent requests all succeed against 5 units.
 
 ---
 
-### 3. Parties (Customers)
+## API
 
-**Endpoint**: `/parties/`
-**Method**: `POST`
-**Description**: Register a new customer/party.
+Every endpoint except `/health`, `/ready` and `/auth/*` requires
+`Authorization: Bearer <token>`.
 
-**Request Body (JSON):**
+| Area | Endpoints |
+|---|---|
+| Auth | `POST /auth/login` · `POST /auth/register` · `GET /auth/me` · `POST /auth/change-password` |
+| Items | `GET POST /items/` · `GET PUT DELETE /items/{id}` · `GET PUT /items/{id}/stock` |
+| Prices | `GET POST /prices/` · `GET PUT DELETE /prices/{itemId}` |
+| Parties | `GET POST /parties/` · `GET PUT DELETE /parties/{id}` · `GET /parties/{id}/ledger` |
+| Agents | `GET POST /agents/` · `GET PUT DELETE /agents/{id}` |
+| Contracts | `GET POST /contracts/` · `GET /contracts/{id}` · `GET /contracts/{id}/quote` · `POST /contracts/{id}/return` · `POST /contracts/{id}/payment` |
+| History | `GET /returns/` · `GET /payments/` |
+| Dashboard | `GET /dashboard/stats` · `/activity` · `/trend` · `/top-items` |
 
-```json
-{
-  "id": "CUST001", // Custom ID string
-  "name": "Jane Smith",
-  "mobile": "9123456780",
-  "aadhaar": "9876-5432-1098", // Optional
-  "address": "123 Main St", // Optional
-  "email": "jane@example.com" // Optional
-}
-```
+`GET /contracts/{id}/quote` prices a return **without committing it**, so the counter
+can show the customer the amount first. It runs the same calculation the commit does.
 
----
-
-### 4. Rent (Transactions)
-
-**Endpoint**: `/rent/`
-**Method**: `POST`
-**Description**: Create a rental transaction.
-
-**Request Body (JSON):**
-
-```json
-{
-  "partyId": "CUST001",
-  "agentId": 1, // Optional
-  "itemQty": 2,
-  "Item": "Heavy Duty Drill", // Optional name
-  "contractId": 101 // Optional
-}
-```
+Interactive docs are at `/api/docs` — served in development only, and disabled when
+`ENVIRONMENT=production`.
 
 ---
 
-### 5. Returns (Transactions)
+## Local development
 
-**Endpoint**: `/returns/`
-**Method**: `POST`
-**Description**: Create a return transaction.
+Requires Python 3.13+ and Node 22+.
 
-**Request Body (JSON):**
-
-```json
-{
-  "partyId": "CUST001",
-  "itemQty": 2,
-  "Item": "Heavy Duty Drill", // Optional
-  "agentId": 1 // Optional
-}
+```bash
+make setup      # backend venv + npm install
+make dev-api    # API on :8000 (SQLite, no Postgres needed)
+make dev-web    # Vite on :5173, proxying /api to :8000
 ```
+
+`make help` lists everything. Common targets:
+
+```bash
+make test       # backend suite on SQLite
+make test-pg    # same suite on PostgreSQL — what CI runs
+make lint       # ruff + eslint
+make migration m="add x"   # autogenerate a migration
+```
+
+SQLite is fine for local work, but **run `make test-pg` before trusting a change to
+dates or money**: SQLite returns naive datetimes and PostgreSQL returns aware ones,
+and that difference has already hidden a real billing bug.
+
+---
+
+## Configuration
+
+All settings are environment variables; see `.env.example` for the annotated list.
+
+The app **refuses to start** when `ENVIRONMENT` is `staging` or `production` and any
+of these hold:
+
+- `SECRET_KEY` is the development default or shorter than 32 characters
+- `CORS_ORIGINS` contains `*`
+- `DATABASE_URL` points at SQLite
+- `DEBUG` is true
+
+That is deliberate. A misconfigured deployment should fail loudly at boot rather than
+quietly serve traffic with forgeable tokens.
+
+---
+
+## Documentation
+
+| Document | Contents |
+|---|---|
+| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Deploying to a VPS, TLS, backups, upgrades, troubleshooting |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Layout, data model, request lifecycle, design decisions |
+| [CHANGELOG.md](CHANGELOG.md) | What changed in the 1.0 hardening pass, and why |
+
+---
+
+## Tests
+
+126 tests covering authentication and access control, the billing rules, the contract
+lifecycle, stock invariants, and concurrent oversell prevention.
+
+```bash
+cd Backend && pytest
+```
+
+CI runs the suite against PostgreSQL, checks that migrations apply cleanly to an empty
+database, verifies the models have not drifted from the migrations, and boots the full
+Docker stack to smoke-test it through nginx.

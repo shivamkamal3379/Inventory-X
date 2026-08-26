@@ -1,200 +1,316 @@
-import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Search, Edit2, Trash2 } from 'lucide-react';
+import { useState } from 'react';
+import { Edit2, Package, Plus, Search, Trash2 } from 'lucide-react';
+import { PageHeader } from '../components/PageHeader';
 import { Button } from '../components/ui/Button';
-import { Input } from '../components/ui/Input';
-import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
+import { Field, Input, Select, Textarea } from '../components/ui/Input';
+import { Badge } from '../components/ui/Badge';
+import { Modal, ConfirmDialog } from '../components/ui/Modal';
+import { EmptyState, ErrorState, SkeletonRows } from '../components/ui/Feedback';
+import { Table, TableWrap, TBody, TD, TH, THead, TR, TRMessage } from '../components/ui/Table';
+import { useToast } from '../components/ToastProvider';
+import { useAsync, useDebounced } from '../hooks/useAsync';
 import { db } from '../services/db';
+import { errorMessage } from '../services/apiClient';
+import { formatMoney, formatNumber, rentUnitLabel } from '../lib/utils';
 
 export default function Inventory() {
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState(null);
+  const [search, setSearch] = useState('');
+  const debounced = useDebounced(search, 300);
+  const [editing, setEditing] = useState(null);
+  const [formOpen, setFormOpen] = useState(false);
+  const [deleting, setDeleting] = useState(null);
+  const [deletePending, setDeletePending] = useState(false);
 
-  useEffect(() => {
-    fetchItems();
-  }, []);
+  const toast = useToast();
+  const items = useAsync(() => db.items.list({ q: debounced, limit: 200 }), [debounced]);
 
-  const fetchItems = async () => {
-    setLoading(true);
-    const data = await db.items.getAll();
-    setItems(data);
-    setLoading(false);
+  const openCreate = () => {
+    setEditing(null);
+    setFormOpen(true);
   };
 
-  const filteredItems = items.filter(item => 
-    item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.description.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const openEdit = (item) => {
+    setEditing(item);
+    setFormOpen(true);
+  };
 
-  const handleDelete = async (id) => {
-    if (confirm('Are you sure?')) {
-        await db.items.delete(id);
-        fetchItems();
+  const confirmDelete = async () => {
+    setDeletePending(true);
+    try {
+      await db.items.remove(deleting.itemId);
+      toast.success(`"${deleting.name}" deleted.`);
+      setDeleting(null);
+      items.reload();
+    } catch (err) {
+      toast.error(errorMessage(err, 'Could not delete this item.'));
+    } finally {
+      setDeletePending(false);
     }
   };
 
-  const openModal = (item = null) => {
-    setEditingItem(item);
-    setIsModalOpen(true);
-  };
+  const rows = items.data ?? [];
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-            <h2 className="text-3xl font-bold tracking-tight">Inventory</h2>
-            <p className="text-muted-foreground">Manage your stock levels and items.</p>
-        </div>
-        <Button onClick={() => openModal()}>
-            <Plus className="mr-2 h-4 w-4" /> Add Item
-        </Button>
+    <div>
+      <PageHeader
+        title="Inventory"
+        description="What you own, what is on the shelf, and what it rents for."
+        actions={
+          <Button onClick={openCreate}>
+            <Plus className="h-4 w-4" />
+            Add item
+          </Button>
+        }
+      />
+
+      <div className="mb-4 max-w-xs">
+        <Input
+          leadingIcon={Search}
+          placeholder="Search items…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          aria-label="Search items"
+        />
       </div>
 
-      <div className="flex items-center space-x-2">
-        <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input 
-                placeholder="Search items..." 
-                className="pl-9 bg-card" 
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-            />
-        </div>
-      </div>
-
-      <div className="rounded-md border border-border bg-card">
-        <div className="relative w-full overflow-auto">
-            <table className="w-full caption-bottom text-sm text-left">
-                <thead className="[&_tr]:border-b">
-                    <tr className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
-                        <th className="h-12 px-4 align-middle font-medium text-muted-foreground">Name</th>
-                        <th className="h-12 px-4 align-middle font-medium text-muted-foreground">Description</th>
-                        <th className="h-12 px-4 align-middle font-medium text-muted-foreground">Available</th>
-                        <th className="h-12 px-4 align-middle font-medium text-muted-foreground">Total</th>
-                        <th className="h-12 px-4 align-middle font-medium text-muted-foreground text-right">Actions</th>
-                    </tr>
-                </thead>
-                <tbody className="[&_tr:last-child]:border-0">
-                    {loading ? (
-                        <tr><td colSpan={5} className="p-4 text-center">Loading...</td></tr>
-                    ) : filteredItems.length === 0 ? (
-                        <tr><td colSpan={5} className="p-4 text-center text-muted-foreground">No items found.</td></tr>
-                    ) : (
-                        filteredItems.map((item) => (
-                            <tr key={item.itemId} className="border-b transition-colors hover:bg-muted/50">
-                                <td className="p-4 align-middle font-medium">{item.name}</td>
-                                <td className="p-4 align-middle">{item.description}</td>
-                                <td className="p-4 align-middle">
-                                    <span className={item.qty > 0 ? "text-green-500" : "text-red-500"}>
-                                        {item.qty}
-                                    </span>
-                                </td>
-                                <td className="p-4 align-middle">{item.qty}</td>
-                                <td className="p-4 align-middle text-right">
-                                    <Button variant="ghost" size="icon" onClick={() => openModal(item)}>
-                                        <Edit2 className="h-4 w-4" />
-                                    </Button>
-                                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDelete(item.itemId)}>
-                                        <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                </td>
-                            </tr>
-                        ))
+      <TableWrap>
+        <Table>
+          <THead>
+            <TR>
+              <TH>Item</TH>
+              <TH align="right">Available</TH>
+              <TH align="right">Out</TH>
+              <TH align="right">Total</TH>
+              <TH align="right">Rate</TH>
+              <TH align="right">Actions</TH>
+            </TR>
+          </THead>
+          <TBody>
+            {items.loading ? (
+              <SkeletonRows rows={6} cols={6} />
+            ) : items.error ? (
+              <TRMessage colSpan={6}>
+                <ErrorState message={items.error} onRetry={items.reload} />
+              </TRMessage>
+            ) : !rows.length ? (
+              <TRMessage colSpan={6}>
+                <EmptyState
+                  icon={Package}
+                  title={debounced ? 'No matching items' : 'No items yet'}
+                  description={
+                    debounced
+                      ? 'Try a different search term.'
+                      : 'Add the equipment you rent out to get started.'
+                  }
+                  action={
+                    !debounced && (
+                      <Button onClick={openCreate}>
+                        <Plus className="h-4 w-4" />
+                        Add your first item
+                      </Button>
+                    )
+                  }
+                />
+              </TRMessage>
+            ) : (
+              rows.map((item) => (
+                <TR key={item.itemId}>
+                  <TD>
+                    <p className="font-medium text-text">{item.name}</p>
+                    {/* Null-safe: the old table called .toLowerCase() on a
+                        possibly-null description and crashed the page. */}
+                    {item.description && (
+                      <p className="mt-0.5 max-w-md truncate text-[12px] text-text-muted">
+                        {item.description}
+                      </p>
                     )}
-                </tbody>
-            </table>
-        </div>
-      </div>
+                  </TD>
+                  <TD align="right" numeric>
+                    {/* Real availability from the stock table. The old UI showed
+                        item.qty in both the Available and Total columns, so
+                        everything always looked fully in stock. */}
+                    <Badge tone={item.availableQty > 0 ? 'success' : 'danger'}>
+                      {formatNumber(item.availableQty)}
+                    </Badge>
+                  </TD>
+                  <TD align="right" numeric className="text-text-muted">
+                    {formatNumber(item.rentedOutQty)}
+                  </TD>
+                  <TD align="right" numeric className="text-text-muted">
+                    {formatNumber(item.qty)}
+                  </TD>
+                  <TD align="right" numeric>
+                    {item.rent != null ? (
+                      <span>
+                        {formatMoney(item.rent)}
+                        <span className="ml-1 text-[11px] text-text-subtle">
+                          /{rentUnitLabel(item.rentFrequency)}
+                        </span>
+                      </span>
+                    ) : (
+                      <span className="text-[12px] text-text-subtle">No rate set</span>
+                    )}
+                  </TD>
+                  <TD align="right">
+                    <div className="flex justify-end gap-1">
+                      <Button variant="ghost" size="icon-sm" onClick={() => openEdit(item)} aria-label={`Edit ${item.name}`}>
+                        <Edit2 className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="danger-ghost"
+                        size="icon-sm"
+                        onClick={() => setDeleting(item)}
+                        aria-label={`Delete ${item.name}`}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </TD>
+                </TR>
+              ))
+            )}
+          </TBody>
+        </Table>
+      </TableWrap>
 
-      {/* Inline Modal (Better to separate component but keeping here for speed) */}
-      <AnimatePresence>
-        {isModalOpen && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-                <motion.div 
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    className="w-full max-w-lg"
-                >
-                    <InventoryForm 
-                        item={editingItem} 
-                        onClose={() => setIsModalOpen(false)} 
-                        onSave={() => { setIsModalOpen(false); fetchItems(); }} 
-                    />
-                </motion.div>
-            </div>
-        )}
-      </AnimatePresence>
+      <ItemFormModal
+        open={formOpen}
+        item={editing}
+        onClose={() => setFormOpen(false)}
+        onSaved={() => {
+          setFormOpen(false);
+          items.reload();
+        }}
+      />
+
+      <ConfirmDialog
+        open={Boolean(deleting)}
+        onClose={() => setDeleting(null)}
+        onConfirm={confirmDelete}
+        isLoading={deletePending}
+        title={`Delete "${deleting?.name}"?`}
+        description="This removes the item along with its stock and rate. It is refused if any units are currently rented out or the item appears on a past rental."
+        confirmLabel="Delete item"
+      />
     </div>
   );
 }
 
-function InventoryForm({ item, onClose, onSave }) {
-    const [formData, setFormData] = useState({
-        name: item?.name || '',
-        description: item?.description || '',
-        qty: item?.qty || 0
+function ItemFormModal({ open, item, onClose, onSaved }) {
+  const isEdit = Boolean(item);
+  const toast = useToast();
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({});
+
+  // Reset whenever the modal opens, so a previous edit does not bleed through.
+  const formKey = `${open}-${item?.itemId ?? 'new'}`;
+  const [lastKey, setLastKey] = useState(formKey);
+  if (formKey !== lastKey) {
+    setLastKey(formKey);
+    setForm({
+      name: item?.name ?? '',
+      description: item?.description ?? '',
+      qty: item?.qty ?? 0,
+      rent: item?.rent ?? '',
+      rentFrequency: item?.rentFrequency ?? 'daily',
     });
-    const [loading, setLoading] = useState(false);
+  }
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setLoading(true);
-        if (item) {
-            await db.items.update(item.itemId, { 
-                name: formData.name, 
-                description: formData.description,
-                qty: formData.qty
-            });
-        } else {
-            await db.items.add(formData);
+  const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      if (isEdit) {
+        await db.items.update(item.itemId, {
+          name: form.name,
+          description: form.description || null,
+          qty: Number(form.qty),
+        });
+        // Rate lives in its own table; keep it in step when it changed.
+        const rent = form.rent === '' ? null : Number(form.rent);
+        if (rent != null) {
+          const payload = { rent, rentFrequency: form.rentFrequency, itemName: form.name };
+          if (item.rent == null) {
+            await db.prices.create({ itemId: item.itemId, ...payload });
+          } else {
+            await db.prices.update(item.itemId, payload);
+          }
         }
-        setLoading(false);
-        onSave();
-    };
+        toast.success('Item updated.');
+      } else {
+        await db.items.create({
+          name: form.name,
+          description: form.description || null,
+          qty: Number(form.qty),
+          rent: form.rent === '' ? null : Number(form.rent),
+          rentFrequency: form.rentFrequency,
+        });
+        toast.success('Item added.');
+      }
+      onSaved();
+    } catch (err) {
+      toast.error(errorMessage(err, 'Could not save this item.'));
+    } finally {
+      setSaving(false);
+    }
+  };
 
-    return (
-        <Card>
-            <CardHeader>
-                <CardTitle>{item ? 'Edit Item' : 'Add New Item'}</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium">Item Name</label>
-                        <Input 
-                            value={formData.name} 
-                            onChange={e => setFormData({...formData, name: e.target.value})}
-                            required 
-                        />
-                    </div>
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium">Description</label>
-                        <Input 
-                            value={formData.description} 
-                            onChange={e => setFormData({...formData, description: e.target.value})}
-                        />
-                    </div>
-                    {!item && (
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium">Initial Quantity</label>
-                            <Input 
-                                type="number"
-                                value={formData.qty} 
-                                onChange={e => setFormData({...formData, qty: parseInt(e.target.value) || 0})}
-                                required 
-                            />
-                        </div>
-                    )}
-                    <div className="flex justify-end gap-2 pt-4">
-                        <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-                        <Button type="submit" isLoading={loading}>{item ? 'Update' : 'Add'}</Button>
-                    </div>
-                </form>
-            </CardContent>
-        </Card>
-    );
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={isEdit ? 'Edit item' : 'Add item'}
+      description={isEdit ? undefined : 'Stock is initialised from the quantity you enter.'}
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose} disabled={saving}>
+            Cancel
+          </Button>
+          <Button form="item-form" type="submit" isLoading={saving}>
+            {isEdit ? 'Save changes' : 'Add item'}
+          </Button>
+        </>
+      }
+    >
+      <form id="item-form" onSubmit={handleSubmit} className="space-y-4">
+        <Field label="Item name" required>
+          {(p) => <Input {...p} value={form.name} onChange={set('name')} required autoFocus />}
+        </Field>
+
+        <Field label="Description">
+          {(p) => <Textarea {...p} value={form.description} onChange={set('description')} rows={2} />}
+        </Field>
+
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Field
+            label="Total quantity"
+            required
+            hint={isEdit ? 'Cannot go below the number currently out' : undefined}
+          >
+            {(p) => (
+              <Input {...p} type="number" min="0" value={form.qty} onChange={set('qty')} required />
+            )}
+          </Field>
+
+          <Field label="Rental rate" hint="Leave blank for no charge">
+            {(p) => (
+              <Input {...p} type="number" min="0" step="0.01" value={form.rent} onChange={set('rent')} />
+            )}
+          </Field>
+
+          <Field label="Per">
+            {(p) => (
+              <Select {...p} value={form.rentFrequency} onChange={set('rentFrequency')}>
+                <option value="daily">Day</option>
+                <option value="weekly">Week</option>
+                <option value="monthly">Month</option>
+              </Select>
+            )}
+          </Field>
+        </div>
+      </form>
+    </Modal>
+  );
 }

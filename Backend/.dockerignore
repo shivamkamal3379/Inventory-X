@@ -1,0 +1,16 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+tests/
+*.db
+*.sqlite3
+.env
+.env.*
+!.env.example
+*.md
+DB_Erd.png
+database.eraser

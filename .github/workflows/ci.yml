@@ -1,0 +1,161 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend (PostgreSQL)
+    runs-on: ubuntu-latest
+
+    # The suite runs against PostgreSQL, not SQLite. SQLite tolerates things
+    # Postgres rejects — timezone handling in particular — and a green SQLite
+    # run has already hidden a real billing bug once.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: inventoryx
+          POSTGRES_PASSWORD: ci-password
+          POSTGRES_DB: inventoryx_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U inventoryx -d inventoryx_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      TEST_DATABASE_URL: postgresql+psycopg://inventoryx:ci-password@localhost:5432/inventoryx_test
+
+    defaults:
+      run:
+        working-directory: Backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: Backend/requirements-dev.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Lint
+        run: ruff check src tests
+
+      - name: Format check
+        run: ruff format --check src tests
+
+      - name: Verify migrations apply to an empty database
+        env:
+          DATABASE_URL: ${{ env.TEST_DATABASE_URL }}
+        run: alembic upgrade head
+
+      - name: Verify no model drift
+        env:
+          DATABASE_URL: ${{ env.TEST_DATABASE_URL }}
+        # Autogenerate against the just-migrated database must produce an empty
+        # migration. If it does not, a model was changed without a migration and
+        # deploying would leave the schema behind the code.
+        run: |
+          alembic revision --autogenerate -m "drift-check" -q
+          latest=$(ls -t alembic/versions/*.py | head -1)
+          if grep -qE '^\s+op\.(create|drop|add|alter)' "$latest"; then
+            echo "::error::Models changed without a migration. Diff detected:"
+            cat "$latest"
+            exit 1
+          fi
+          rm -f "$latest"
+          echo "No drift — models and migrations agree."
+
+      - name: Test
+        run: pytest --cov=src --cov-report=term-missing
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: Frontend/package-lock.json
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+
+  docker:
+    name: Docker stack
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build and start the stack
+        run: |
+          cat > .env <<'ENVEOF'
+          ENVIRONMENT=production
+          POSTGRES_USER=inventoryx
+          POSTGRES_DB=inventoryx
+          POSTGRES_PASSWORD=ci-only-password
+          SECRET_KEY=ci-only-secret-key-that-is-at-least-32-characters-long
+          ALLOW_REGISTRATION=false
+          FIRST_ADMIN_USERNAME=admin
+          FIRST_ADMIN_PASSWORD=ci-only-admin-password
+          WEB_PORT=8080
+          CORS_ORIGINS=http://localhost:8080
+          ENVEOF
+          docker compose up -d --build
+
+      - name: Wait for health
+        run: |
+          for i in $(seq 1 90); do
+            if docker compose ps --format '{{.Service}}:{{.Health}}' | grep -q 'api:healthy'; then
+              echo "Stack healthy after ${i}s"; exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::Stack did not become healthy"
+          docker compose logs
+          exit 1
+
+      - name: Smoke test through nginx
+        run: |
+          set -e
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/)" = "200"
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/api/health)" = "200"
+          # Every business endpoint must reject an unauthenticated caller.
+          for p in items/ parties/ agents/ contracts/ dashboard/stats; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' "http://localhost:8080/api/$p")
+            test "$code" = "401" || { echo "::error::/api/$p returned $code, expected 401"; exit 1; }
+          done
+          # Interactive docs must not be exposed in production.
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/api/docs)" = "404"
+          echo "Smoke test passed."
+
+      - name: Dump logs on failure
+        if: failure()
+        run: docker compose logs --tail=200
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v
